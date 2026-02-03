@@ -28,6 +28,21 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =========================================================
+# SESSION STATE INITIALIZATION
+# =========================================================
+
+if "page" not in st.session_state:
+    st.session_state.page = "home"
+if "queue" not in st.session_state:
+    st.session_state.queue = deque()
+if "courts" not in st.session_state:
+    st.session_state.courts = {}
+if "started" not in st.session_state:
+    st.session_state.started = False
+if "court_count" not in st.session_state:
+    st.session_state.court_count = 2
+
+# =========================================================
 # HELPERS
 # =========================================================
 
@@ -81,21 +96,6 @@ def auto_fill_empty_courts():
     for c in st.session_state.courts:
         if st.session_state.courts[c] is None:
             start_match(c)
-
-# =========================================================
-# SESSION STATE
-# =========================================================
-
-if "page" not in st.session_state:
-    st.session_state.page = "home"
-if "queue" not in st.session_state:
-    st.session_state.queue = deque()
-if "courts" not in st.session_state:
-    st.session_state.courts = {}
-if "started" not in st.session_state:
-    st.session_state.started = False
-if "court_count" not in st.session_state:
-    st.session_state.court_count = 2
 
 # =========================================================
 # HOMEPAGE
