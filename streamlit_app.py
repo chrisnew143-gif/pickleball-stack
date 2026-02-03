@@ -6,7 +6,14 @@ from collections import deque
 # CONFIG
 # =========================================================
 
-COURT_LIMITS = {2: 16, 3: 26, 4: 36, 5: 46, 6: 56, 7:66}
+COURT_LIMITS = {
+    2: 16,
+    3: 26,
+    4: 36,
+    5: 46,
+    6: 56,
+    7: 66
+}
 
 
 # =========================================================
@@ -61,49 +68,35 @@ def make_teams(players):
     return [players[:2], players[2:]]
 
 
-# ---------------------------------------------------------
+# =========================================================
 # FIFO SAFE MATCHING
-# ---------------------------------------------------------
+# =========================================================
 
 def is_safe_combo(players):
-    """Only rule: beginner and intermediate cannot mix"""
     skills = {p[1] for p in players}
-
-    if "BEGINNER" in skills and "INTERMEDIATE" in skills:
-        return False
-
-    return True
+    return not ("BEGINNER" in skills and "INTERMEDIATE" in skills)
 
 
 def pick_four_fifo_safe(queue):
-    """
-    STRICT FIFO:
-    take first 4.
-    if illegal, rotate minimal players until safe.
-    """
-
     if len(queue) < 4:
         return None
 
     temp = list(queue)
 
     for shift in range(len(temp) - 3):
-
         group = temp[shift:shift+4]
 
         if is_safe_combo(group):
-
             for p in group:
                 queue.remove(p)
-
             return group
 
     return None
 
 
-# ---------------------------------------------------------
-# COURTS
-# ---------------------------------------------------------
+# =========================================================
+# COURT LOGIC
+# =========================================================
 
 def start_match(court_id):
     four = pick_four_fifo_safe(st.session_state.queue)
@@ -162,7 +155,7 @@ if "court_count" not in st.session_state:
 # =========================================================
 
 st.title("🎾 TiraDinks Pickleball Auto Stack")
-st.caption("BAWAL UMIHI DITO!")
+st.caption("First come • first play • fair rotation")
 
 
 # =========================================================
@@ -175,7 +168,7 @@ with st.sidebar:
 
     st.session_state.court_count = st.selectbox(
         "Number of courts",
-        [2, 3, 4]
+        list(COURT_LIMITS.keys())   # ✅ dynamic 2–7
     )
 
     st.write(f"Max players: **{COURT_LIMITS[st.session_state.court_count]}**")
@@ -201,13 +194,10 @@ with st.sidebar:
     st.divider()
 
     if st.button("🚀 Start Games"):
-
         st.session_state.started = True
-
         st.session_state.courts = {
             i: None for i in range(1, st.session_state.court_count + 1)
         }
-
         st.rerun()
 
     if st.button("🔄 Reset All"):
@@ -218,7 +208,7 @@ with st.sidebar:
 
 
 # =========================================================
-# AUTO FILL BEFORE DISPLAY
+# AUTO FILL
 # =========================================================
 
 changed = auto_fill_empty_courts()
@@ -253,42 +243,48 @@ if not st.session_state.started:
 
 
 # =========================================================
-# COURTS
+# COURTS DISPLAY (WRAP FOR MANY COURTS)
 # =========================================================
 
 st.divider()
 st.subheader("🏟 Live Courts")
 
-cols = st.columns(len(st.session_state.courts))
+per_row = 3   # nice layout when many courts
 
-for idx, court_id in enumerate(st.session_state.courts):
+court_ids = list(st.session_state.courts.keys())
 
-    with cols[idx]:
+for row in range(0, len(court_ids), per_row):
 
-        st.markdown('<div class="court-card">', unsafe_allow_html=True)
-        st.markdown(f"### Court {court_id}")
+    cols = st.columns(per_row)
 
-        teams = st.session_state.courts[court_id]
+    for idx, court_id in enumerate(court_ids[row:row+per_row]):
 
-        if teams:
+        with cols[idx]:
 
-            teamA = " & ".join(format_player(p) for p in teams[0])
-            teamB = " & ".join(format_player(p) for p in teams[1])
+            st.markdown('<div class="court-card">', unsafe_allow_html=True)
+            st.markdown(f"### Court {court_id}")
 
-            st.write(f"**Team A**  \n{teamA}")
-            st.write(f"**Team B**  \n{teamB}")
+            teams = st.session_state.courts[court_id]
 
-            c1, c2 = st.columns(2)
+            if teams:
 
-            if c1.button("🏆 A Wins", key=f"a{court_id}"):
-                finish_match(court_id, 0)
-                st.rerun()
+                teamA = " & ".join(format_player(p) for p in teams[0])
+                teamB = " & ".join(format_player(p) for p in teams[1])
 
-            if c2.button("🏆 B Wins", key=f"b{court_id}"):
-                finish_match(court_id, 1)
-                st.rerun()
+                st.write(f"**Team A**  \n{teamA}")
+                st.write(f"**Team B**  \n{teamB}")
 
-        else:
-            st.info("Waiting for players...")
+                c1, c2 = st.columns(2)
 
-        st.markdown('</div>', unsafe_allow_html=True)
+                if c1.button("🏆 A Wins", key=f"a{court_id}"):
+                    finish_match(court_id, 0)
+                    st.rerun()
+
+                if c2.button("🏆 B Wins", key=f"b{court_id}"):
+                    finish_match(court_id, 1)
+                    st.rerun()
+
+            else:
+                st.info("Waiting for players...")
+
+            st.markdown('</div>', unsafe_allow_html=True)
