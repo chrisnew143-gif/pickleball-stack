@@ -7,9 +7,9 @@ from collections import deque, defaultdict
 # =========================================================
 
 CATEGORY_MAP = {
-    "b": "BEGINNER",
-    "n": "NOVICE",
-    "i": "INTERMEDIATE"
+    "BEGINNER",
+    "NOVICE",
+    "INTERMEDIATE"
 }
 
 COURT_LIMITS = {2: 16, 3: 26, 4: 36}
