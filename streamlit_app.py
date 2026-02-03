@@ -110,16 +110,6 @@ def finish_match(court_id, winner_idx):
     st.session_state.queue.extend(winners + losers)
     start_match(court_id)
 
-def auto_fill_empty_courts():
-    if not st.session_state.started:
-        return False
-    changed = False
-    for c in st.session_state.courts:
-        if st.session_state.courts[c] is None:
-            if start_match(c):
-                changed = True
-    return changed
-
 # =========================================================
 # HOMEPAGE
 # =========================================================
@@ -131,14 +121,12 @@ if st.session_state.page == "home":
     col1, col2 = st.columns(2)
 
     with col1:
-        organizer_clicked = st.button("Organizer", key="organizer_btn")
-        if organizer_clicked:
+        if st.button("Organizer", key="organizer_btn"):
             st.session_state.page = "organizer"
             st.experimental_rerun()
 
     with col2:
-        player_clicked = st.button("Player", key="player_btn")
-        if player_clicked:
+        if st.button("Player", key="player_btn"):
             st.session_state.page = "player"
             st.experimental_rerun()
 
@@ -157,7 +145,7 @@ if st.session_state.page == "player":
     st.stop()
 
 # =========================================================
-# ORGANIZER PAGE (Pickleball Auto Stack)
+# ORGANIZER PAGE
 # =========================================================
 
 if st.session_state.page == "organizer":
@@ -165,9 +153,9 @@ if st.session_state.page == "organizer":
     st.title("🎾 TiraDinks Pickleball Auto Stack")
     st.caption("First come, first play • Fair skill matching • Tap winners to continue")
 
-    # =========================================================
+    # ---------------------------------------------------------
     # SIDEBAR
-    # =========================================================
+    # ---------------------------------------------------------
     with st.sidebar:
 
         st.header("⚙ Setup")
@@ -194,6 +182,7 @@ if st.session_state.page == "organizer":
         if st.button("🚀 Start Games"):
             st.session_state.started = True
             st.session_state.courts = {i: None for i in range(1, st.session_state.court_count + 1)}
+            # Only rerun here after a button click
             st.experimental_rerun()
 
         if st.button("🔄 Reset All"):
@@ -202,16 +191,16 @@ if st.session_state.page == "organizer":
             st.session_state.started = False
             st.experimental_rerun()
 
-    # =========================================================
-    # AUTO FILL COURTS BEFORE DISPLAY
-    # =========================================================
-    changed = auto_fill_empty_courts()
-    if changed:
-        st.experimental_rerun()
+    # ---------------------------------------------------------
+    # AUTO FILL COURTS WHEN DISPLAYING (no rerun)
+    # ---------------------------------------------------------
+    for c in range(1, st.session_state.court_count + 1):
+        if c not in st.session_state.courts or st.session_state.courts[c] is None:
+            start_match(c)
 
-    # =========================================================
+    # ---------------------------------------------------------
     # WAITING LIST
-    # =========================================================
+    # ---------------------------------------------------------
     st.subheader("⏳ Waiting Queue")
     waiting = [format_player(p) for p in st.session_state.queue]
     if waiting:
@@ -219,16 +208,16 @@ if st.session_state.page == "organizer":
     else:
         st.success("No players waiting 🎉")
 
-    # =========================================================
+    # ---------------------------------------------------------
     # STOP IF NOT STARTED
-    # =========================================================
+    # ---------------------------------------------------------
     if not st.session_state.started:
         st.info("Add players then press **Start Games**")
         st.stop()
 
-    # =========================================================
+    # ---------------------------------------------------------
     # COURTS
-    # =========================================================
+    # ---------------------------------------------------------
     st.divider()
     st.subheader("🏟 Live Courts")
     cols = st.columns(len(st.session_state.courts))
