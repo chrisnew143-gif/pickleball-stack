@@ -58,14 +58,12 @@ def make_teams(players):
     return [players[:2], players[2:]]
 
 def is_safe_combo(players):
-    """Beginner and Intermediate cannot be in same match"""
     skills = {p[1] for p in players}
     if "BEGINNER" in skills and "INTERMEDIATE" in skills:
         return False
     return True
 
 def pick_four_fifo_safe(queue):
-    """Pick first 4 players in FIFO order with safe skill combination"""
     if len(queue) < 4:
         return None
     temp = list(queue)
@@ -91,6 +89,7 @@ def finish_match(court_id, winner_idx):
     losers = teams[1 - winner_idx]
     st.session_state.queue.extend(winners + losers)
     start_match(court_id)
+    st.experimental_rerun()  # 2-click approach is now safe
 
 def auto_fill_empty_courts():
     if not st.session_state.started:
@@ -129,11 +128,9 @@ if st.session_state.page == "home":
     st.title("🎾 TiraDinks Pickleball")
     st.subheader("Select mode")
     c1, c2 = st.columns(2)
-
     if c1.button("Organizer"):
         st.session_state.page = "organizer"
         st.experimental_rerun()
-
     if c2.button("Player"):
         st.session_state.page = "player"
         st.experimental_rerun()
@@ -191,9 +188,7 @@ elif st.session_state.page == "organizer":
             st.experimental_rerun()
 
     # AUTO FILL COURTS
-    changed = auto_fill_empty_courts()
-    if changed:
-        st.experimental_rerun()
+    auto_fill_empty_courts()
 
     # WAITING QUEUE
     st.subheader("⏳ Waiting Queue")
@@ -226,22 +221,11 @@ elif st.session_state.page == "organizer":
                 st.write(f"**Team B**  \n{teamB}")
 
                 c1, c2 = st.columns(2)
-                a_wins = c1.button("🏆 A Wins", key=f"a{court_id}")
-                b_wins = c2.button("🏆 B Wins", key=f"b{court_id}")
-
-                if a_wins:
+                if c1.button("🏆 A Wins", key=f"a{court_id}"):
                     finish_match(court_id, 0)
-                    st.session_state._rerun_needed = True
-                if b_wins:
+                if c2.button("🏆 B Wins", key=f"b{court_id}"):
                     finish_match(court_id, 1)
-                    st.session_state._rerun_needed = True
-
             else:
                 st.info("Waiting for players...")
 
             st.markdown('</div>', unsafe_allow_html=True)
-
-    # Single rerun after all button clicks
-    if st.session_state.get("_rerun_needed"):
-        st.session_state._rerun_needed = False
-        st.experimental_rerun()
