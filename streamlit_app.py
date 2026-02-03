@@ -10,6 +10,36 @@ COURT_LIMITS = {2: 16, 3: 26, 4: 36, 5: 46, 6: 56, 7: 66}
 SKILLS = ["BEGINNER", "NOVICE", "INTERMEDIATE"]
 
 # =========================================================
+# SESSION STATE INIT
+# =========================================================
+
+if "needs_rerun" not in st.session_state:
+    st.session_state.needs_rerun = False
+
+if "page" not in st.session_state:
+    st.session_state.page = "home"
+
+if "queue" not in st.session_state:
+    st.session_state.queue = deque()
+
+if "courts" not in st.session_state:
+    st.session_state.courts = {}
+
+if "started" not in st.session_state:
+    st.session_state.started = False
+
+if "court_count" not in st.session_state:
+    st.session_state.court_count = 2
+
+# =========================================================
+# SAFE RERUN CHECK
+# =========================================================
+
+if st.session_state.needs_rerun:
+    st.session_state.needs_rerun = False
+    st.experimental_rerun()
+
+# =========================================================
 # PAGE SETUP
 # =========================================================
 
@@ -28,25 +58,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =========================================================
-# SESSION STATE
-# =========================================================
-
-if "page" not in st.session_state:
-    st.session_state.page = "home"
-
-if "queue" not in st.session_state:
-    st.session_state.queue = deque()
-
-if "courts" not in st.session_state:
-    st.session_state.courts = {}
-
-if "started" not in st.session_state:
-    st.session_state.started = False
-
-if "court_count" not in st.session_state:
-    st.session_state.court_count = 2
-
-# =========================================================
 # HELPERS
 # =========================================================
 
@@ -61,14 +72,10 @@ def make_teams(players):
     return [players[:2], players[2:]]
 
 def is_safe_combo(players):
-    """Beginner ↔ Intermediate not allowed"""
     skills = {p[1] for p in players}
-    if "BEGINNER" in skills and "INTERMEDIATE" in skills:
-        return False
-    return True
+    return not ("BEGINNER" in skills and "INTERMEDIATE" in skills)
 
 def pick_four_fifo_safe(queue):
-    """FIFO match picking, respects safe combo"""
     if len(queue) < 4:
         return None
     temp = list(queue)
@@ -117,13 +124,11 @@ if st.session_state.page == "home":
     with col1:
         if st.button("Organizer"):
             st.session_state.page = "organizer"
-            st.experimental_rerun()  # Safe: inside button handler
-
+            st.session_state.needs_rerun = True
     with col2:
         if st.button("Player"):
             st.session_state.page = "player"
-            st.experimental_rerun()  # Safe: inside button handler
-
+            st.session_state.needs_rerun = True
     st.stop()
 
 # =========================================================
@@ -135,7 +140,7 @@ if st.session_state.page == "player":
     st.info("UNDER CONSTRUCTION")
     if st.button("Back to Home"):
         st.session_state.page = "home"
-        st.experimental_rerun()  # Safe: inside button handler
+        st.session_state.needs_rerun = True
     st.stop()
 
 # =========================================================
@@ -161,25 +166,25 @@ with st.sidebar:
         submitted = st.form_submit_button("Add to Queue")
         if submitted and name.strip():
             st.session_state.queue.append((name.strip(), cat.upper()))
-            st.experimental_rerun()  # Safe: inside form submission
+            st.session_state.needs_rerun = True
 
     st.divider()
     if st.button("🚀 Start Games"):
         st.session_state.started = True
         st.session_state.courts = {i: None for i in range(1, st.session_state.court_count + 1)}
-        st.experimental_rerun()  # Safe: inside button handler
+        st.session_state.needs_rerun = True
 
     if st.button("🔄 Reset All"):
         st.session_state.queue = deque()
         st.session_state.courts = {}
         st.session_state.started = False
-        st.experimental_rerun()  # Safe: inside button handler
+        st.session_state.needs_rerun = True
 
 # ----------------------------
 # AUTO FILL COURTS BEFORE DISPLAY
 # ----------------------------
 if auto_fill_empty_courts():
-    st.experimental_rerun()  # Safe: only after Streamlit initialized
+    st.session_state.needs_rerun = True
 
 # ----------------------------
 # WAITING LIST
@@ -204,7 +209,6 @@ if not st.session_state.started:
 st.divider()
 st.subheader("🏟 Live Courts")
 cols = st.columns(len(st.session_state.courts))
-
 for idx, court_id in enumerate(st.session_state.courts):
     with cols[idx]:
         st.markdown('<div class="court-card">', unsafe_allow_html=True)
@@ -220,11 +224,11 @@ for idx, court_id in enumerate(st.session_state.courts):
             c1, c2 = st.columns(2)
             if c1.button("🏆 A Wins", key=f"a{court_id}"):
                 finish_match(court_id, 0)
-                st.experimental_rerun()  # Safe: inside button handler
+                st.session_state.needs_rerun = True
             if c2.button("🏆 B Wins", key=f"b{court_id}"):
                 finish_match(court_id, 1)
-                st.experimental_rerun()  # Safe: inside button handler
+                st.session_state.needs_rerun = True
         else:
             st.info("Waiting for players...")
 
-        st.markdown('</div>', unsafe_allow_html=True)
+st.experimental_rerun() if st.session_state.needs_rerun else None
