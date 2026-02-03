@@ -64,78 +64,77 @@ def make_teams(players):
     return [players[:2], players[2:]]
 
 
-# =========================================================
-# ⭐ SMART MATCHMAKING LOGIC (NEW)
-# =========================================================
+# ---------------------------------------------------------
+# FAIR MATCHING LOGIC
+# ---------------------------------------------------------
 
-def extract_players(queue, category, count):
-    """Pull players of specific category"""
-    selected = []
-    remaining = deque()
+def allowed_mix(group_skills):
+    """Return True if skill combination is allowed"""
+    unique = set(group_skills)
 
-    while queue:
-        p = queue.popleft()
-        if p[1] == category and len(selected) < count:
-            selected.append(p)
-        else:
-            remaining.append(p)
+    # same category always ok
+    if len(unique) == 1:
+        return True
 
-    queue.extend(remaining)
-    return selected
+    # allowed mixes
+    if unique == {"BEGINNER", "NOVICE"}:
+        return True
+    if unique == {"NOVICE", "INTERMEDIATE"}:
+        return True
+
+    # beginner + intermediate NOT allowed
+    return False
 
 
-def find_best_four(queue):
-    """
-    Priority:
-    1) 4 same skill
-    2) Beginner + Novice
-    3) Novice + Intermediate
-    4) else None
-    """
+def pick_four_fair(queue):
+    """Pick 4 players fairly and remove from queue"""
 
-    temp = deque(queue)
+    players = list(queue)
 
-    groups = defaultdict(list)
-    for p in temp:
-        groups[p[1]].append(p)
+    if len(players) < 4:
+        return None
 
-    # ---------- SAME SKILL ----------
-    for cat in SKILLS:
-        if len(groups[cat]) >= 4:
-            return extract_players(queue, cat, 4)
+    # 1️⃣ Try same-skill first
+    by_skill = defaultdict(list)
+    for p in players:
+        by_skill[p[1]].append(p)
 
-    # ---------- BEGINNER + NOVICE ----------
-    if len(groups["BEGINNER"]) + len(groups["NOVICE"]) >= 4:
-        result = []
-        result += extract_players(queue, "BEGINNER", min(4, len(groups["BEGINNER"])))
-        if len(result) < 4:
-            result += extract_players(queue, "NOVICE", 4 - len(result))
-        if len(result) == 4:
-            return result
+    for skill in SKILLS:
+        if len(by_skill[skill]) >= 4:
+            chosen = by_skill[skill][:4]
+            for p in chosen:
+                queue.remove(p)
+            return chosen
 
-    # ---------- NOVICE + INTERMEDIATE ----------
-    if len(groups["NOVICE"]) + len(groups["INTERMEDIATE"]) >= 4:
-        result = []
-        result += extract_players(queue, "NOVICE", min(4, len(groups["NOVICE"])))
-        if len(result) < 4:
-            result += extract_players(queue, "INTERMEDIATE", 4 - len(result))
-        if len(result) == 4:
-            return result
+    # 2️⃣ Try allowed mixes
+    for i in range(len(players)):
+        for j in range(i+1, len(players)):
+            for k in range(j+1, len(players)):
+                for l in range(k+1, len(players)):
+                    group = [players[i], players[j], players[k], players[l]]
+                    skills = [p[1] for p in group]
+
+                    if allowed_mix(skills):
+                        for p in group:
+                            queue.remove(p)
+                        return group
 
     return None
 
 
-# =========================================================
-# MATCH CONTROL
-# =========================================================
+# ---------------------------------------------------------
+# COURT CONTROL
+# ---------------------------------------------------------
 
 def start_match(court_id):
-    players = find_best_four(st.session_state.queue)
+    four = pick_four_fair(st.session_state.queue)
 
-    if players:
-        st.session_state.courts[court_id] = make_teams(players)
-    else:
-        st.session_state.courts[court_id] = None
+    if four:
+        st.session_state.courts[court_id] = make_teams(four)
+        return True
+
+    st.session_state.courts[court_id] = None
+    return False
 
 
 def finish_match(court_id, winner_idx):
@@ -149,12 +148,19 @@ def finish_match(court_id, winner_idx):
 
 
 def auto_fill_empty_courts():
+    """Auto start matches BEFORE rendering queue"""
     if not st.session_state.started:
-        return
+        return False
+
+    changed = False
 
     for c in st.session_state.courts:
         if st.session_state.courts[c] is None:
-            start_match(c)
+            started = start_match(c)
+            if started:
+                changed = True
+
+    return changed
 
 
 # =========================================================
@@ -199,6 +205,8 @@ with st.sidebar:
 
     st.divider()
 
+    st.subheader("➕ Add Player")
+
     with st.form("add_player_form", clear_on_submit=True):
 
         name = st.text_input("Name")
@@ -208,19 +216,25 @@ with st.sidebar:
             ["Beginner", "Novice", "Intermediate"]
         )
 
-        if st.form_submit_button("Add to Queue") and name.strip():
+        submitted = st.form_submit_button("Add to Queue")
+
+        if submitted and name.strip():
+
             player = (name.strip(), cat.upper())
-            st.session_state.queue.append(player)
+
+            if len(st.session_state.queue) < COURT_LIMITS[st.session_state.court_count]:
+                st.session_state.queue.append(player)
 
     st.divider()
 
     if st.button("🚀 Start Games"):
+
         st.session_state.started = True
+
         st.session_state.courts = {
             i: None for i in range(1, st.session_state.court_count + 1)
         }
-        for c in st.session_state.courts:
-            start_match(c)
+
         st.rerun()
 
     if st.button("🔄 Reset All"):
@@ -231,7 +245,16 @@ with st.sidebar:
 
 
 # =========================================================
-# WAITING LIST
+# 🔥 AUTO FILL FIRST (CRITICAL FIX)
+# =========================================================
+
+changed = auto_fill_empty_courts()
+if changed:
+    st.rerun()
+
+
+# =========================================================
+# WAITING LIST (now always correct)
 # =========================================================
 
 st.subheader("⏳ Waiting Queue")
@@ -248,10 +271,8 @@ else:
 
 
 # =========================================================
-# AUTO FILL
+# STOP IF NOT STARTED
 # =========================================================
-
-auto_fill_empty_courts()
 
 if not st.session_state.started:
     st.info("Add players then press **Start Games**")
