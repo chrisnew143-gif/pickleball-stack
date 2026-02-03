@@ -7,7 +7,6 @@ from collections import deque
 # =========================================================
 
 COURT_LIMITS = {2: 16, 3: 26, 4: 36, 5: 46, 6: 56, 7: 66}
-
 SKILLS = ["BEGINNER", "NOVICE", "INTERMEDIATE"]
 
 # =========================================================
@@ -121,14 +120,15 @@ if "court_count" not in st.session_state:
 if st.session_state.page == "home":
     st.title("🎾 TiraDinks Pickleball")
     st.subheader("Choose your role")
-
     col1, col2 = st.columns(2)
 
     if col1.button("Organizer"):
         st.session_state.page = "organizer"
+        st.experimental_rerun()
 
     if col2.button("Player"):
         st.session_state.page = "player"
+        st.experimental_rerun()
 
     st.stop()
 
@@ -139,9 +139,9 @@ if st.session_state.page == "home":
 if st.session_state.page == "player":
     st.title("🎾 Player")
     st.warning("UNDER CONSTRUCTION")
-    if st.button("Back"):
+    if st.button("Back to Home"):
         st.session_state.page = "home"
-        st.stop()
+        st.experimental_rerun()
 
 # =========================================================
 # ORGANIZER PAGE (Pickleball Auto Stack)
@@ -151,6 +151,13 @@ if st.session_state.page == "organizer":
 
     st.title("🎾 TiraDinks Pickleball Auto Stack")
     st.caption("First come, first play • Fair skill matching • Tap winners to continue")
+
+    # -----------------------------------------------------
+    # BACK TO HOME BUTTON
+    # -----------------------------------------------------
+    if st.button("⬅️ Back to Home"):
+        st.session_state.page = "home"
+        st.experimental_rerun()
 
     # -----------------------------------------------------
     # SIDEBAR
