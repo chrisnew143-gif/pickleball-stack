@@ -20,7 +20,7 @@ COURT_LIMITS = {2: 16, 3: 26, 4: 36}
 # =========================================================
 
 st.set_page_config(
-    page_title="Pickleball Auto Stack",
+    page_title="TiraDinks Pickleball Auto Stack",
     page_icon="🎾",
     layout="wide"
 )
@@ -137,7 +137,7 @@ if "court_count" not in st.session_state:
 # HEADER
 # =========================================================
 
-st.title("🎾 Pickleball Auto Stack")
+st.title("🎾 TiraDinks Pickleball Auto Stack")
 st.caption("Real-time stacking • first come first play • tap winners to continue")
 
 
@@ -166,7 +166,7 @@ with st.sidebar:
 
         cat = st.radio(
             "Skill",
-            ["b Beginner", "n Novice", "i Intermediate"]
+            ["Beginner", "Novice", "Intermediate"]
         )
 
         submitted = st.form_submit_button("Add to Queue")
