@@ -1,12 +1,10 @@
 import streamlit as st
 import random
-from collections import deque, defaultdict
+from collections import deque
 
 # =========================================================
 # CONFIG
 # =========================================================
-
-SKILLS = ["BEGINNER", "NOVICE", "INTERMEDIATE"]
 
 COURT_LIMITS = {2: 16, 3: 26, 4: 36}
 
@@ -55,8 +53,7 @@ def skill_icon(cat):
 
 
 def format_player(p):
-    name, cat = p
-    return f"{skill_icon(cat)} {name}"
+    return f"{skill_icon(p[1])} {p[0]}"
 
 
 def make_teams(players):
@@ -65,69 +62,51 @@ def make_teams(players):
 
 
 # ---------------------------------------------------------
-# FAIR MATCHING LOGIC
+# FIFO SAFE MATCHING
 # ---------------------------------------------------------
 
-def allowed_mix(group_skills):
-    """Return True if skill combination is allowed"""
-    unique = set(group_skills)
+def is_safe_combo(players):
+    """Only rule: beginner and intermediate cannot mix"""
+    skills = {p[1] for p in players}
 
-    # same category always ok
-    if len(unique) == 1:
-        return True
+    if "BEGINNER" in skills and "INTERMEDIATE" in skills:
+        return False
 
-    # allowed mixes
-    if unique == {"BEGINNER", "NOVICE"}:
-        return True
-    if unique == {"NOVICE", "INTERMEDIATE"}:
-        return True
-
-    # beginner + intermediate NOT allowed
-    return False
+    return True
 
 
-def pick_four_fair(queue):
-    """Pick 4 players fairly and remove from queue"""
+def pick_four_fifo_safe(queue):
+    """
+    STRICT FIFO:
+    take first 4.
+    if illegal, rotate minimal players until safe.
+    """
 
-    players = list(queue)
-
-    if len(players) < 4:
+    if len(queue) < 4:
         return None
 
-    # 1️⃣ Try same-skill first
-    by_skill = defaultdict(list)
-    for p in players:
-        by_skill[p[1]].append(p)
+    temp = list(queue)
 
-    for skill in SKILLS:
-        if len(by_skill[skill]) >= 4:
-            chosen = by_skill[skill][:4]
-            for p in chosen:
+    for shift in range(len(temp) - 3):
+
+        group = temp[shift:shift+4]
+
+        if is_safe_combo(group):
+
+            for p in group:
                 queue.remove(p)
-            return chosen
 
-    # 2️⃣ Try allowed mixes
-    for i in range(len(players)):
-        for j in range(i+1, len(players)):
-            for k in range(j+1, len(players)):
-                for l in range(k+1, len(players)):
-                    group = [players[i], players[j], players[k], players[l]]
-                    skills = [p[1] for p in group]
-
-                    if allowed_mix(skills):
-                        for p in group:
-                            queue.remove(p)
-                        return group
+            return group
 
     return None
 
 
 # ---------------------------------------------------------
-# COURT CONTROL
+# COURTS
 # ---------------------------------------------------------
 
 def start_match(court_id):
-    four = pick_four_fair(st.session_state.queue)
+    four = pick_four_fifo_safe(st.session_state.queue)
 
     if four:
         st.session_state.courts[court_id] = make_teams(four)
@@ -148,7 +127,6 @@ def finish_match(court_id, winner_idx):
 
 
 def auto_fill_empty_courts():
-    """Auto start matches BEFORE rendering queue"""
     if not st.session_state.started:
         return False
 
@@ -156,8 +134,7 @@ def auto_fill_empty_courts():
 
     for c in st.session_state.courts:
         if st.session_state.courts[c] is None:
-            started = start_match(c)
-            if started:
+            if start_match(c):
                 changed = True
 
     return changed
@@ -185,7 +162,7 @@ if "court_count" not in st.session_state:
 # =========================================================
 
 st.title("🎾 TiraDinks Pickleball Auto Stack")
-st.caption("Real-time stacking • fair skill matching • tap winners to continue")
+st.caption("First come • first play • fair rotation")
 
 
 # =========================================================
@@ -219,11 +196,7 @@ with st.sidebar:
         submitted = st.form_submit_button("Add to Queue")
 
         if submitted and name.strip():
-
-            player = (name.strip(), cat.upper())
-
-            if len(st.session_state.queue) < COURT_LIMITS[st.session_state.court_count]:
-                st.session_state.queue.append(player)
+            st.session_state.queue.append((name.strip(), cat.upper()))
 
     st.divider()
 
@@ -245,7 +218,7 @@ with st.sidebar:
 
 
 # =========================================================
-# 🔥 AUTO FILL FIRST (CRITICAL FIX)
+# AUTO FILL BEFORE DISPLAY
 # =========================================================
 
 changed = auto_fill_empty_courts()
@@ -254,7 +227,7 @@ if changed:
 
 
 # =========================================================
-# WAITING LIST (now always correct)
+# WAITING LIST
 # =========================================================
 
 st.subheader("⏳ Waiting Queue")
