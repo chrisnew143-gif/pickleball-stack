@@ -21,21 +21,9 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-.big-btn button {
-    height: 60px;
-    font-size: 18px;
-}
-.court-card {
-    padding: 15px;
-    border-radius: 15px;
-    background-color: #f3f6fa;
-}
-.waiting-box {
-    background-color: #fff3cd;
-    padding: 12px;
-    border-radius: 10px;
-    font-size: 18px;
-}
+.big-btn button { height: 60px; font-size: 18px; }
+.court-card { padding: 15px; border-radius: 15px; background-color: #f3f6fa; }
+.waiting-box { background-color: #fff3cd; padding: 12px; border-radius: 10px; font-size: 18px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -100,16 +88,12 @@ def auto_fill_empty_courts():
 
 if "page" not in st.session_state:
     st.session_state.page = "home"
-
 if "queue" not in st.session_state:
     st.session_state.queue = deque()
-
 if "courts" not in st.session_state:
     st.session_state.courts = {}
-
 if "started" not in st.session_state:
     st.session_state.started = False
-
 if "court_count" not in st.session_state:
     st.session_state.court_count = 2
 
@@ -120,15 +104,16 @@ if "court_count" not in st.session_state:
 if st.session_state.page == "home":
     st.title("🎾 TiraDinks Pickleball")
     st.subheader("Choose your role")
+
     col1, col2 = st.columns(2)
 
     if col1.button("Organizer"):
         st.session_state.page = "organizer"
-        st.experimental_rerun()
+        st.experimental_rerun()  # ✅ Safe inside button
 
     if col2.button("Player"):
         st.session_state.page = "player"
-        st.experimental_rerun()
+        st.experimental_rerun()  # ✅ Safe inside button
 
     st.stop()
 
@@ -139,16 +124,15 @@ if st.session_state.page == "home":
 if st.session_state.page == "player":
     st.title("🎾 Player")
     st.warning("UNDER CONSTRUCTION")
-    if st.button("Back to Home"):
+    if st.button("⬅️ Back to Home"):
         st.session_state.page = "home"
-        st.experimental_rerun()
+        st.experimental_rerun()  # ✅ Safe inside button
 
 # =========================================================
-# ORGANIZER PAGE (Pickleball Auto Stack)
+# ORGANIZER PAGE
 # =========================================================
 
 if st.session_state.page == "organizer":
-
     st.title("🎾 TiraDinks Pickleball Auto Stack")
     st.caption("First come, first play • Fair skill matching • Tap winners to continue")
 
@@ -157,14 +141,13 @@ if st.session_state.page == "organizer":
     # -----------------------------------------------------
     if st.button("⬅️ Back to Home"):
         st.session_state.page = "home"
-        st.experimental_rerun()
+        st.experimental_rerun()  # ✅ Safe inside button
 
     # -----------------------------------------------------
     # SIDEBAR
     # -----------------------------------------------------
     with st.sidebar:
         st.header("⚙ Setup")
-
         st.session_state.court_count = st.selectbox(
             "Number of courts", [2,3,4], index=0
         )
@@ -189,7 +172,7 @@ if st.session_state.page == "organizer":
             st.session_state.queue = deque()
             st.session_state.courts = {}
             st.session_state.started = False
-            st.experimental_rerun()
+            st.experimental_rerun()  # ✅ Safe inside button
 
     # -----------------------------------------------------
     # AUTO FILL COURTS
