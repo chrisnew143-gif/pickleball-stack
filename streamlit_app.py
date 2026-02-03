@@ -14,30 +14,37 @@ SKILLS = ["BEGINNER", "NOVICE", "INTERMEDIATE"]
 # =========================================================
 
 st.set_page_config(
-    page_title="TiraDinks Pickleball Auto Stack",
+    page_title="TiraDinks Pickleball",
     page_icon="🎾",
     layout="wide"
 )
 
 st.markdown("""
 <style>
-.big-btn button {
-    height: 60px;
-    font-size: 18px;
-}
-.court-card {
-    padding: 15px;
-    border-radius: 15px;
-    background-color: #f3f6fa;
-}
-.waiting-box {
-    background-color: #fff3cd;
-    padding: 12px;
-    border-radius: 10px;
-    font-size: 18px;
-}
+.big-btn button { height: 60px; font-size: 18px; }
+.court-card { padding: 15px; border-radius: 15px; background-color: #f3f6fa; }
+.waiting-box { background-color: #fff3cd; padding: 12px; border-radius: 10px; font-size: 18px; }
 </style>
 """, unsafe_allow_html=True)
+
+# =========================================================
+# SESSION STATE
+# =========================================================
+
+if "page" not in st.session_state:
+    st.session_state.page = "home"
+
+if "queue" not in st.session_state:
+    st.session_state.queue = deque()
+
+if "courts" not in st.session_state:
+    st.session_state.courts = {}
+
+if "started" not in st.session_state:
+    st.session_state.started = False
+
+if "court_count" not in st.session_state:
+    st.session_state.court_count = 2
 
 # =========================================================
 # HELPERS
@@ -95,28 +102,6 @@ def auto_fill_empty_courts():
             start_match(c)
 
 # =========================================================
-# SESSION STATE
-# =========================================================
-
-if "page" not in st.session_state:
-    st.session_state.page = "home"
-
-if "next_page" not in st.session_state:
-    st.session_state.next_page = None
-
-if "queue" not in st.session_state:
-    st.session_state.queue = deque()
-
-if "courts" not in st.session_state:
-    st.session_state.courts = {}
-
-if "started" not in st.session_state:
-    st.session_state.started = False
-
-if "court_count" not in st.session_state:
-    st.session_state.court_count = 2
-
-# =========================================================
 # HOMEPAGE
 # =========================================================
 
@@ -124,19 +109,11 @@ if st.session_state.page == "home":
     st.title("🎾 TiraDinks Pickleball")
     st.subheader("Choose your role")
     col1, col2 = st.columns(2)
+
     if col1.button("Organizer"):
-        st.session_state.next_page = "organizer"
-    if col2.button("Player"):
-        st.session_state.next_page = "player"
-    st.stop()  # Stop until next_page is processed
-
-# =========================================================
-# SAFE PAGE SWITCH
-# =========================================================
-
-if st.session_state.next_page:
-    st.session_state.page = st.session_state.next_page
-    st.session_state.next_page = None
+        st.session_state.page = "organizer"
+    elif col2.button("Player"):
+        st.session_state.page = "player"
 
 # =========================================================
 # PLAYER PAGE
@@ -147,19 +124,19 @@ if st.session_state.page == "player":
     st.warning("UNDER CONSTRUCTION")
     if st.button("Back to Home"):
         st.session_state.page = "home"
-        st.stop()
 
 # =========================================================
-# ORGANIZER PAGE
+# ORGANIZER PAGE (Pickleball Auto Stack)
 # =========================================================
 
 if st.session_state.page == "organizer":
-    st.title("🎾 TiraDinks Pickleball Auto Stack")
+
+    st.title("🎾 Pickleball Auto Stack (Organizer)")
     st.caption("First come, first play • Fair skill matching • Tap winners to continue")
 
-    # -----------------------------
-    # Sidebar
-    # -----------------------------
+    # -----------------------
+    # SIDEBAR
+    # -----------------------
     with st.sidebar:
         st.header("⚙ Setup")
 
@@ -189,18 +166,18 @@ if st.session_state.page == "organizer":
             st.session_state.started = False
             st.experimental_rerun()
 
-        if st.button("⬅ Back to Home"):
+        if st.button("🏠 Back to Home"):
             st.session_state.page = "home"
-            st.stop()
+            st.experimental_rerun()
 
-    # -----------------------------
-    # Auto fill empty courts
-    # -----------------------------
+    # -----------------------
+    # AUTO FILL COURTS
+    # -----------------------
     auto_fill_empty_courts()
 
-    # -----------------------------
-    # Waiting Queue
-    # -----------------------------
+    # -----------------------
+    # WAITING LIST
+    # -----------------------
     st.subheader("⏳ Waiting Queue")
     waiting = [format_player(p) for p in st.session_state.queue]
     if waiting:
@@ -212,9 +189,9 @@ if st.session_state.page == "organizer":
         st.info("Add players then press **Start Games**")
         st.stop()
 
-    # -----------------------------
-    # Live Courts
-    # -----------------------------
+    # -----------------------
+    # LIVE COURTS
+    # -----------------------
     st.divider()
     st.subheader("🏟 Live Courts")
     cols = st.columns(len(st.session_state.courts))
@@ -229,6 +206,7 @@ if st.session_state.page == "organizer":
                 teamB = " & ".join(format_player(p) for p in teams[1])
                 st.write(f"**Team A**  \n{teamA}")
                 st.write(f"**Team B**  \n{teamB}")
+
                 c1, c2 = st.columns(2)
                 if c1.button("🏆 A Wins", key=f"a{court_id}"):
                     finish_match(court_id, 0)
@@ -238,4 +216,5 @@ if st.session_state.page == "organizer":
                     st.experimental_rerun()
             else:
                 st.info("Waiting for players...")
+
             st.markdown('</div>', unsafe_allow_html=True)
