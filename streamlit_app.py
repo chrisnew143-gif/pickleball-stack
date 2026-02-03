@@ -126,12 +126,8 @@ if st.session_state.page == "home":
 
     if col1.button("Organizer"):
         st.session_state.page = "organizer"
-        st.experimental_rerun()
     elif col2.button("Player"):
         st.session_state.page = "player"
-        st.experimental_rerun()
-
-    st.stop()
 
 # =========================================================
 # PLAYER PAGE
@@ -142,8 +138,6 @@ if st.session_state.page == "player":
     st.warning("UNDER CONSTRUCTION")
     if st.button("🏠 Back to Home"):
         st.session_state.page = "home"
-        st.experimental_rerun()
-    st.stop()
 
 # =========================================================
 # ORGANIZER PAGE
@@ -178,7 +172,6 @@ if st.session_state.page == "organizer":
 
         if st.button("🏠 Back to Home"):
             st.session_state.page = "home"
-            st.experimental_rerun()
 
         if st.button("🚀 Start Games"):
             st.session_state.started = True
@@ -189,7 +182,6 @@ if st.session_state.page == "organizer":
             st.session_state.queue = deque()
             st.session_state.courts = {}
             st.session_state.started = False
-            st.experimental_rerun()
 
     # -------------------
     # Auto fill courts
@@ -208,34 +200,30 @@ if st.session_state.page == "organizer":
 
     if not st.session_state.started:
         st.info("Add players then press **Start Games**")
-        st.stop()
+    else:
+        # -------------------
+        # Live Courts
+        # -------------------
+        st.divider()
+        st.subheader("🏟 Live Courts")
+        cols = st.columns(len(st.session_state.courts))
 
-    # -------------------
-    # Live Courts
-    # -------------------
-    st.divider()
-    st.subheader("🏟 Live Courts")
-    cols = st.columns(len(st.session_state.courts))
+        for idx, court_id in enumerate(st.session_state.courts):
+            with cols[idx]:
+                st.markdown('<div class="court-card">', unsafe_allow_html=True)
+                st.markdown(f"### Court {court_id}")
+                teams = st.session_state.courts[court_id]
+                if teams:
+                    teamA = " & ".join(format_player(p) for p in teams[0])
+                    teamB = " & ".join(format_player(p) for p in teams[1])
+                    st.write(f"**Team A**  \n{teamA}")
+                    st.write(f"**Team B**  \n{teamB}")
 
-    for idx, court_id in enumerate(st.session_state.courts):
-        with cols[idx]:
-            st.markdown('<div class="court-card">', unsafe_allow_html=True)
-            st.markdown(f"### Court {court_id}")
-            teams = st.session_state.courts[court_id]
-            if teams:
-                teamA = " & ".join(format_player(p) for p in teams[0])
-                teamB = " & ".join(format_player(p) for p in teams[1])
-                st.write(f"**Team A**  \n{teamA}")
-                st.write(f"**Team B**  \n{teamB}")
-
-                c1, c2 = st.columns(2)
-                if c1.button("🏆 A Wins", key=f"a{court_id}"):
-                    finish_match(court_id, 0)
-                    st.experimental_rerun()
-                if c2.button("🏆 B Wins", key=f"b{court_id}"):
-                    finish_match(court_id, 1)
-                    st.experimental_rerun()
-            else:
-                st.info("Waiting for players...")
-
-            st.markdown('</div>', unsafe_allow_html=True)
+                    c1, c2 = st.columns(2)
+                    if c1.button("🏆 A Wins", key=f"a{court_id}"):
+                        finish_match(court_id, 0)
+                    if c2.button("🏆 B Wins", key=f"b{court_id}"):
+                        finish_match(court_id, 1)
+                else:
+                    st.info("Waiting for players...")
+                st.markdown('</div>', unsafe_allow_html=True)
