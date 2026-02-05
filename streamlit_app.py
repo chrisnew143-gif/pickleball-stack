@@ -3,6 +3,7 @@ import random
 
 st.set_page_config(page_title="Pickleball Auto Stack", layout="wide")
 
+
 # =====================================================
 # INIT STATE
 # =====================================================
@@ -11,7 +12,7 @@ def init():
         st.session_state.page = "home"
 
     if "queue" not in st.session_state:
-        st.session_state.queue = []  # [{name, skill}]
+        st.session_state.queue = []   # [{name, skill}]
 
     if "courts" not in st.session_state:
         st.session_state.courts = []
@@ -20,19 +21,27 @@ init()
 
 
 # =====================================================
-# SKILL RULES
+# CONFIG
 # =====================================================
-
 SKILLS = ["Beginner", "Novice", "Intermediate"]
 
 ICON = {
     "Beginner": "🟢",
-    "Novice": "🔵",
+    "Novice": "🟡",
     "Intermediate": "🔴"
 }
 
+SKILL_VALUE = {
+    "Beginner": 1,
+    "Novice": 2,
+    "Intermediate": 3
+}
 
-def display_player(p):
+
+# =====================================================
+# HELPERS
+# =====================================================
+def show(p):
     return f'{ICON[p["skill"]]} {p["name"]}'
 
 
@@ -42,37 +51,53 @@ def display_player(p):
 # -----------------------------------------------------
 def safe_group(players):
     skills = {p["skill"] for p in players}
-    if "Beginner" in skills and "Intermediate" in skills:
-        return False
-    return True
+    return not ("Beginner" in skills and "Intermediate" in skills)
 
 
 # -----------------------------------------------------
-# MIX PLAYERS BY SKILL
+# MIX BY SKILL (fair order)
 # -----------------------------------------------------
 def mix_by_skill(players):
 
-    groups = {s: [] for s in SKILLS}
+    buckets = {s: [] for s in SKILLS}
 
     for p in players:
-        groups[p["skill"]].append(p)
+        buckets[p["skill"]].append(p)
 
-    for g in groups.values():
-        random.shuffle(g)
+    for b in buckets.values():
+        random.shuffle(b)
 
     mixed = []
 
-    # round robin
-    while any(groups.values()):
+    while any(buckets.values()):
         for s in SKILLS:
-            if groups[s]:
-                mixed.append(groups[s].pop())
+            if buckets[s]:
+                mixed.append(buckets[s].pop())
 
     return mixed
 
 
 # -----------------------------------------------------
-# CREATE COURTS SAFELY
+# ⭐ NEW: BALANCED TEAM BUILDER
+# prevents 2 beginners vs 2 novice problem
+# -----------------------------------------------------
+def build_balanced_teams(group):
+
+    # sort strongest → weakest
+    group = sorted(group, key=lambda x: SKILL_VALUE[x["skill"]], reverse=True)
+
+    # snake draft balancing
+    teamA = [group[0], group[3]]
+    teamB = [group[1], group[2]]
+
+    random.shuffle(teamA)
+    random.shuffle(teamB)
+
+    return teamA, teamB
+
+
+# -----------------------------------------------------
+# START GAMES
 # -----------------------------------------------------
 def start_games():
 
@@ -85,21 +110,20 @@ def start_games():
 
         found = False
 
-        # try few small shuffles only
         for _ in range(10):
+
             group = remaining[:4]
 
             if safe_group(group):
-                teamA = [group[0], group[1]]
-                teamB = [group[2], group[3]]
+
+                teamA, teamB = build_balanced_teams(group)
 
                 courts.append({"A": teamA, "B": teamB})
-
                 remaining = remaining[4:]
                 found = True
                 break
-            else:
-                random.shuffle(remaining)
+
+            random.shuffle(remaining)
 
         if not found:
             break
@@ -110,29 +134,33 @@ def start_games():
 
 # -----------------------------------------------------
 # FINISH MATCH
-# Winner stays, losers rotate to queue
+# winners first, losers next
+# no reshuffle bug
 # -----------------------------------------------------
-def finish_match(court_index, winner):
+def finish_match(idx, winner):
 
-    court = st.session_state.courts[court_index]
+    court = st.session_state.courts[idx]
 
     winners = court[winner]
     losers = court["A" if winner == "B" else "B"]
 
-    # winners stay first in queue
+    # winners first in queue
     st.session_state.queue.extend(winners + losers)
 
-    # refill court
+    # refill safely
     if len(st.session_state.queue) >= 4:
-        new_group = []
+
+        group = []
 
         for _ in range(4):
-            new_group.append(st.session_state.queue.pop(0))
+            group.append(st.session_state.queue.pop(0))
 
-        court["A"] = new_group[:2]
-        court["B"] = new_group[2:]
+        teamA, teamB = build_balanced_teams(group)
 
-    st.session_state.courts[court_index] = court
+        court["A"] = teamA
+        court["B"] = teamB
+
+    st.session_state.courts[idx] = court
 
 
 def go_home():
@@ -164,17 +192,12 @@ elif st.session_state.page == "player":
 
     st.title("👤 Join Queue")
 
-    name = st.text_input("Your name")
-
+    name = st.text_input("Name")
     skill = st.selectbox("Skill", SKILLS)
 
-    if st.button("Join"):
-        if name:
-            st.session_state.queue.append({
-                "name": name,
-                "skill": skill
-            })
-            st.success("Added to queue!")
+    if st.button("Join") and name:
+        st.session_state.queue.append({"name": name, "skill": skill})
+        st.success("Added!")
 
 
 # =====================================================
@@ -186,9 +209,9 @@ elif st.session_state.page == "organizer":
 
     st.title("🏟 Pickleball Auto Stack")
 
-    # -----------------
+    # --------------------
     # SIDEBAR
-    # -----------------
+    # --------------------
     with st.sidebar:
 
         st.subheader("Add Player")
@@ -196,37 +219,34 @@ elif st.session_state.page == "organizer":
         name = st.text_input("Name")
         skill = st.selectbox("Skill", SKILLS, key="side")
 
-        if st.button("Add"):
-            if name:
-                st.session_state.queue.append({
-                    "name": name,
-                    "skill": skill
-                })
+        if st.button("Add") and name:
+            st.session_state.queue.append({"name": name, "skill": skill})
 
         st.divider()
 
         if st.button("Start Games"):
             start_games()
 
-    # -----------------
+    # --------------------
     # QUEUE
-    # -----------------
+    # --------------------
     st.subheader("⏳ Waiting Queue")
 
     if st.session_state.queue:
-        st.write(", ".join(display_player(p) for p in st.session_state.queue))
+        st.write(", ".join(show(p) for p in st.session_state.queue))
     else:
         st.success("No players waiting 🎉")
 
     st.divider()
 
-    # -----------------
+    # --------------------
     # COURTS
-    # -----------------
+    # --------------------
     st.subheader("🏟 Live Courts")
 
     if not st.session_state.courts:
         st.info("Press Start Games")
+
     else:
         for i, court in enumerate(st.session_state.courts):
 
@@ -239,12 +259,12 @@ elif st.session_state.page == "organizer":
                 with c1:
                     st.write("**Team A**")
                     for p in court["A"]:
-                        st.write(display_player(p))
+                        st.write(show(p))
 
                 with c2:
                     st.write("**Team B**")
                     for p in court["B"]:
-                        st.write(display_player(p))
+                        st.write(show(p))
 
                 with c3:
                     if st.button("Winner A", key=f"A{i}"):
