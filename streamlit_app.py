@@ -12,7 +12,7 @@ def init():
     if "queue" not in st.session_state:
         st.session_state.queue = []
     if "courts" not in st.session_state:
-        st.session_state.courts = []
+        st.session_state.courts = []  # list of dicts: {"A": [], "B": []}
 
 init()
 
@@ -67,36 +67,41 @@ def mix_by_skill(players):
     return mixed
 
 # =====================================================
-# GAME LOGIC
+# ASSIGN PLAYERS TO COURTS AUTOMATICALLY
 # =====================================================
-def start_games():
-    """Build initial courts from queue"""
-    players = mix_by_skill(st.session_state.queue.copy())
-    new_courts = []
-    remaining = players.copy()
+def assign_players():
+    """Assign players from queue to available courts automatically"""
+    remaining = st.session_state.queue.copy()
+    st.session_state.queue = []
 
+    # flatten existing courts to check which slots are empty
+    empty_slots = sum([4 - (len(c["A"]) + len(c["B"])) for c in st.session_state.courts])
+
+    # add new courts if needed
     while len(remaining) >= 4:
         group = remaining[:4]
         if not safe_group(group):
             random.shuffle(remaining)
             continue
         teamA, teamB = build_balanced(group)
-        new_courts.append({"A": teamA.copy(), "B": teamB.copy()})
+        st.session_state.courts.append({"A": teamA, "B": teamB})
         remaining = remaining[4:]
 
-    st.session_state.courts = new_courts
-    st.session_state.queue = remaining
+    # if leftover players <4, put them back in queue
+    st.session_state.queue.extend(remaining)
 
+# =====================================================
+# FINISH MATCH (ONLY UPDATE THE CLICKED COURT)
+# =====================================================
 def finish_match(idx, winner):
-    """Mark a court winner and rebuild only that court"""
     court = st.session_state.courts[idx]
     winners = court[winner].copy()
     losers = court["A" if winner == "B" else "B"].copy()
 
-    # add players back to the queue
+    # add back to queue
     st.session_state.queue.extend(winners + losers)
 
-    # rebuild court if enough players
+    # rebuild only this court if enough players
     if len(st.session_state.queue) >= 4:
         group = [st.session_state.queue.pop(0) for _ in range(4)]
         teamA, teamB = build_balanced(group)
@@ -104,12 +109,12 @@ def finish_match(idx, winner):
     else:
         st.session_state.courts[idx] = {"A": [], "B": []}
 
+# =====================================================
+# HOME
+# =====================================================
 def go_home():
     st.session_state.page = "home"
 
-# =====================================================
-# HOME PAGE
-# =====================================================
 if st.session_state.page == "home":
     st.title("🎾 Pickleball Stack App")
     c1, c2 = st.columns(2)
@@ -119,7 +124,7 @@ if st.session_state.page == "home":
         st.session_state.page = "player"
 
 # =====================================================
-# PLAYER PAGE
+# PLAYER
 # =====================================================
 elif st.session_state.page == "player":
     st.button("⬅ Back Home", on_click=go_home)
@@ -128,9 +133,10 @@ elif st.session_state.page == "player":
     skill = st.selectbox("Skill", SKILLS)
     if st.button("Join") and name:
         st.session_state.queue.append({"name": name, "skill": skill})
+        assign_players()  # assign immediately
 
 # =====================================================
-# ORGANIZER PAGE
+# ORGANIZER
 # =====================================================
 elif st.session_state.page == "organizer":
     st.button("⬅ Back Home", on_click=go_home)
@@ -142,9 +148,7 @@ elif st.session_state.page == "organizer":
         skill = st.selectbox("Skill", SKILLS, key="s")
         if st.button("Add") and name:
             st.session_state.queue.append({"name": name, "skill": skill})
-        st.divider()
-        if st.button("Start Games"):
-            start_games()
+            assign_players()  # assign immediately
 
     # ---------------- queue
     st.subheader("⏳ Waiting Queue")
@@ -158,7 +162,7 @@ elif st.session_state.page == "organizer":
     # ---------------- courts
     st.subheader("🏟 Live Courts")
     if not st.session_state.courts:
-        st.info("Press Start Games")
+        st.info("No courts yet")
 
     for i, court in enumerate(st.session_state.courts):
         with st.container():
