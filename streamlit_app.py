@@ -13,6 +13,8 @@ def init():
         st.session_state.queue = []
     if "courts" not in st.session_state:
         st.session_state.courts = []  # list of dicts: {"A": [], "B": []}
+    if "court_updated" not in st.session_state:
+        st.session_state.court_updated = {}  # track updates per court
 
 init()
 
@@ -70,15 +72,24 @@ def mix_by_skill(players):
 # ASSIGN PLAYERS TO COURTS AUTOMATICALLY
 # =====================================================
 def assign_players():
-    """Assign players from queue to available courts automatically"""
+    """Assign players from queue to courts automatically, up to 7 courts"""
     remaining = st.session_state.queue.copy()
     st.session_state.queue = []
 
-    # flatten existing courts to check which slots are empty
-    empty_slots = sum([4 - (len(c["A"]) + len(c["B"])) for c in st.session_state.courts])
+    # fill existing courts first
+    for court in st.session_state.courts:
+        if len(court["A"]) + len(court["B"]) < 4 and len(remaining) >= 4:
+            group = remaining[:4]
+            if not safe_group(group):
+                random.shuffle(remaining)
+                continue
+            teamA, teamB = build_balanced(group)
+            court["A"] = teamA
+            court["B"] = teamB
+            remaining = remaining[4:]
 
-    # add new courts if needed
-    while len(remaining) >= 4:
+    # add new courts if needed (max 7)
+    while len(remaining) >= 4 and len(st.session_state.courts) < 7:
         group = remaining[:4]
         if not safe_group(group):
             random.shuffle(remaining)
@@ -87,13 +98,18 @@ def assign_players():
         st.session_state.courts.append({"A": teamA, "B": teamB})
         remaining = remaining[4:]
 
-    # if leftover players <4, put them back in queue
+    # leftover players <4 go to waiting queue
     st.session_state.queue.extend(remaining)
 
 # =====================================================
-# FINISH MATCH (ONLY UPDATE THE CLICKED COURT)
+# FINISH MATCH (ONLY UPDATE CLICKED COURT ONCE)
 # =====================================================
 def finish_match(idx, winner):
+    # prevent double clicks
+    if st.session_state.court_updated.get(idx):
+        return
+    st.session_state.court_updated[idx] = True
+
     court = st.session_state.courts[idx]
     winners = court[winner].copy()
     losers = court["A" if winner == "B" else "B"].copy()
@@ -134,6 +150,7 @@ elif st.session_state.page == "player":
     if st.button("Join") and name:
         st.session_state.queue.append({"name": name, "skill": skill})
         assign_players()  # assign immediately
+        st.session_state.court_updated = {}  # reset click tracking
 
 # =====================================================
 # ORGANIZER
@@ -149,6 +166,7 @@ elif st.session_state.page == "organizer":
         if st.button("Add") and name:
             st.session_state.queue.append({"name": name, "skill": skill})
             assign_players()  # assign immediately
+            st.session_state.court_updated = {}  # reset click tracking
 
     # ---------------- queue
     st.subheader("⏳ Waiting Queue")
