@@ -8,7 +8,7 @@ st.write("Welcome! Choose a mode:")
 col1, col2 = st.columns(2)
 
 if col1.button("🏟 Organizer (AutoStack)", use_container_width=True):
-    st.switch_page("1_🏟_AutoStack")
+    st.switch_page("1_🏟_AutoStack.py")
 
 if col2.button("👤 Player Join", use_container_width=True):
-    st.switch_page("2_👤_Player")
+    st.switch_page("2_👤_Player.py")
