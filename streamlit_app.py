@@ -8,14 +8,12 @@ import os
 # =========================================================
 # CONFIG
 # =========================================================
-
-MAX_PER_COURT = 10   # max 10 players per court
-RESULTS_FILE = "pickleball_results.csv"  # store scores
+MAX_PER_COURT = 10  # players per court
+RESULTS_FILE = "pickleball_results.csv"
 
 # =========================================================
-# PAGE
+# PAGE SETUP
 # =========================================================
-
 st.set_page_config(
     page_title="Pickleball Auto Stack",
     page_icon="🎾",
@@ -24,26 +22,16 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-.court-card {
-    padding: 15px;
-    border-radius: 15px;
-    background-color: #f3f6fa;
-}
-.waiting-box {
-    background-color: #fff3cd;
-    padding: 12px;
-    border-radius: 10px;
-    font-size: 18px;
-}
+.court-card { padding: 15px; border-radius: 15px; background-color: #f3f6fa; }
+.waiting-box { background-color: #fff3cd; padding: 12px; border-radius: 10px; font-size: 18px; }
 </style>
 """, unsafe_allow_html=True)
 
 # =========================================================
 # HELPERS
 # =========================================================
-
 def skill_icon(cat):
-    return {"BEGINNER":"🟢","NOVICE":"🟡","INTERMEDIATE":"🔴"}[cat]
+    return {"BEGINNER": "🟢", "NOVICE": "🟡", "INTERMEDIATE": "🔴"}[cat]
 
 def format_player(p):
     return f"{skill_icon(p[1])} {p[0]}"
@@ -67,10 +55,24 @@ def pick_four_fifo_safe(queue):
             return list(combo)
     return None
 
+def record_match(teams, scoreA, scoreB, court_id):
+    # Record match to CSV
+    data = {
+        "Court": court_id,
+        "TeamA": " & ".join([p[0] for p in teams[0]]),
+        "TeamB": " & ".join([p[0] for p in teams[1]]),
+        "ScoreA": scoreA,
+        "ScoreB": scoreB
+    }
+    df_new = pd.DataFrame([data])
+    if os.path.exists(RESULTS_FILE):
+        df_existing = pd.read_csv(RESULTS_FILE)
+        df_new = pd.concat([df_existing, df_new], ignore_index=True)
+    df_new.to_csv(RESULTS_FILE, index=False)
+
 # =========================================================
 # COURT LOGIC
 # =========================================================
-
 def start_match(court_id):
     four = pick_four_fifo_safe(st.session_state.queue)
     if four:
@@ -82,29 +84,27 @@ def submit_score(court_id, scoreA, scoreB):
     teams = st.session_state.courts[court_id]
     if not teams:
         return
-    
-    # Record the match
+
+    # Record match
     record_match(teams, scoreA, scoreB, court_id)
-    
-    # Combine teams back into list
+
+    # Combine players back
     players = teams[0] + teams[1]
-    
-    # Refill court from waiting queue
-    four = []
-    while len(four) < 4 and st.session_state.queue:
-        four.append(st.session_state.queue.popleft())
-    
-    # Add remaining current players to make 4
-    remaining = [p for p in players if p not in four]
-    four += remaining[:4-len(four)]
-    
-    if len(four) == 4:
-        st.session_state.courts[court_id] = make_teams(four)
+    # Mix with waiting queue
+    new_four = []
+    while len(new_four) < 4 and st.session_state.queue:
+        new_four.append(st.session_state.queue.popleft())
+    remaining = [p for p in players if p not in new_four]
+    new_four += remaining[:4-len(new_four)]
+
+    if len(new_four) == 4:
+        st.session_state.courts[court_id] = make_teams(new_four)
     else:
         st.session_state.courts[court_id] = None
-    
+
     # Reset score inputs
-    st.session_state.scores[court_id] = [0,0]
+    st.session_state[f"scoreA{court_id}"] = 0
+    st.session_state[f"scoreB{court_id}"] = 0
 
 def auto_fill_empty_courts():
     if not st.session_state.started:
@@ -113,25 +113,9 @@ def auto_fill_empty_courts():
         if st.session_state.courts[c] is None:
             start_match(c)
 
-def record_match(teams, scoreA, scoreB, court_id):
-    data = {
-        "Court": court_id,
-        "TeamA": " & ".join([p[0] for p in teams[0]]),
-        "TeamB": " & ".join([p[0] for p in teams[1]]),
-        "ScoreA": scoreA,
-        "ScoreB": scoreB
-    }
-    if os.path.exists(RESULTS_FILE):
-        df = pd.read_csv(RESULTS_FILE)
-        df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
-    else:
-        df = pd.DataFrame([data])
-    df.to_csv(RESULTS_FILE, index=False)
-
 # =========================================================
 # SESSION STATE
 # =========================================================
-
 if "queue" not in st.session_state:
     st.session_state.queue = deque()
 if "courts" not in st.session_state:
@@ -140,27 +124,24 @@ if "started" not in st.session_state:
     st.session_state.started = False
 if "court_count" not in st.session_state:
     st.session_state.court_count = 2
-if "scores" not in st.session_state:
-    st.session_state.scores = {}
 
 # =========================================================
 # HEADER
 # =========================================================
-
 st.title("🎾 Pickleball Auto Stack")
 st.caption("First come • first play • fair rotation")
 
 # =========================================================
 # SIDEBAR
 # =========================================================
-
 with st.sidebar:
     st.header("⚙ Setup")
     st.session_state.court_count = st.selectbox("Number of courts", [2,3,4,5,6,7])
     max_players = st.session_state.court_count * MAX_PER_COURT
     st.write(f"Max players: **{max_players}**")
     st.divider()
-    
+
+    # Add Player
     st.subheader("➕ Add Player")
     with st.form("add_player_form", clear_on_submit=True):
         name = st.text_input("Name")
@@ -171,29 +152,24 @@ with st.sidebar:
                 st.warning("⚠️ Queue is FULL for selected courts")
             else:
                 st.session_state.queue.append((name.strip(), cat.upper()))
+
     st.divider()
-    
     if st.button("🚀 Start Games", use_container_width=True):
         st.session_state.started = True
         st.session_state.courts = {i: None for i in range(1, st.session_state.court_count+1)}
-        st.session_state.scores = {i:[0,0] for i in range(1, st.session_state.court_count+1)}
-    
     if st.button("🔄 Reset All", use_container_width=True):
         st.session_state.queue = deque()
         st.session_state.courts = {}
         st.session_state.started = False
-        st.session_state.scores = {}
 
 # =========================================================
-# AUTO FILL
+# AUTO FILL COURTS
 # =========================================================
-
 auto_fill_empty_courts()
 
 # =========================================================
-# WAITING LIST
+# WAITING QUEUE
 # =========================================================
-
 st.subheader("⏳ Waiting Queue")
 waiting = [format_player(p) for p in st.session_state.queue]
 if waiting:
@@ -204,15 +180,13 @@ else:
 # =========================================================
 # STOP IF NOT STARTED
 # =========================================================
-
 if not st.session_state.started:
     st.info("Add players then press **Start Games**")
     st.stop()
 
 # =========================================================
-# COURTS
+# LIVE COURTS
 # =========================================================
-
 st.divider()
 st.subheader("🏟 Live Courts")
 per_row = 3
@@ -226,18 +200,25 @@ for row in range(0, len(court_ids), per_row):
             st.markdown(f"### Court {court_id}")
             teams = st.session_state.courts[court_id]
             if teams:
-                teamA_str = " & ".join(format_player(p) for p in teams[0])
-                teamB_str = " & ".join(format_player(p) for p in teams[1])
-                st.write(f"**Team A**  \n{teamA_str}")
-                st.write(f"**Team B**  \n{teamB_str}")
-                
+                teamA = " & ".join(format_player(p) for p in teams[0])
+                teamB = " & ".join(format_player(p) for p in teams[1])
+                st.write(f"**Team A**  \n{teamA}")
+                st.write(f"**Team B**  \n{teamB}")
+
                 # Score inputs
-                scoreA = st.number_input(f"Score Team A (Court {court_id})", min_value=0, value=st.session_state.scores.get(court_id,[0,0])[0], key=f"scoreA{court_id}")
-                scoreB = st.number_input(f"Score Team B (Court {court_id})", min_value=0, value=st.session_state.scores.get(court_id,[0,0])[1], key=f"scoreB{court_id}")
-                
+                scoreA = st.number_input(f"Score Team A (Court {court_id})",
+                                         min_value=0,
+                                         value=st.session_state.get(f"scoreA{court_id}", 0),
+                                         key=f"scoreA{court_id}")
+                scoreB = st.number_input(f"Score Team B (Court {court_id})",
+                                         min_value=0,
+                                         value=st.session_state.get(f"scoreB{court_id}", 0),
+                                         key=f"scoreB{court_id}")
+
                 if st.button("Submit Score", key=f"submit{court_id}"):
                     submit_score(court_id, scoreA, scoreB)
+
             else:
                 st.info("Waiting for players...")
-            
+
             st.markdown('</div>', unsafe_allow_html=True)
