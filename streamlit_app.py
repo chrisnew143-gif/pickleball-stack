@@ -7,7 +7,14 @@ from itertools import combinations
 # CONFIG
 # =========================================================
 
-MAX_PER_COURT = 10   # ⭐ 10 players per court
+COURT_LIMITS = {
+    2: 16,
+    3: 26,
+    4: 36,
+    5: 46,
+    6: 56,
+    7: 66
+}
 
 # =========================================================
 # PAGE
@@ -56,7 +63,7 @@ def make_teams(players):
     return [players[:2], players[2:]]
 
 # =========================================================
-# SAFE MATCHING
+# SAFE MATCHING LOGIC (FIXED)
 # =========================================================
 
 def is_safe_combo(players):
@@ -65,6 +72,12 @@ def is_safe_combo(players):
 
 
 def pick_four_fifo_safe(queue):
+    """
+    FIX:
+    Instead of only checking consecutive players,
+    try ALL 4-player combinations while keeping FIFO fairness.
+    Prevents blocking when skills are mixed.
+    """
 
     if len(queue) < 4:
         return None
@@ -88,8 +101,10 @@ def start_match(court_id):
 
     if four:
         st.session_state.courts[court_id] = make_teams(four)
-    else:
-        st.session_state.courts[court_id] = None
+        return True
+
+    st.session_state.courts[court_id] = None
+    return False
 
 
 def finish_match(court_id, winner_idx):
@@ -103,6 +118,11 @@ def finish_match(court_id, winner_idx):
 
 
 def auto_fill_empty_courts():
+    """
+    Always try to fill every empty court.
+    No 'changed' detection needed.
+    Streamlit already reruns automatically.
+    """
 
     if not st.session_state.started:
         return
@@ -144,23 +164,17 @@ with st.sidebar:
 
     st.session_state.court_count = st.selectbox(
         "Number of courts",
-        [2,3,4,5,6,7]
+        list(COURT_LIMITS.keys())
     )
 
-    max_players = st.session_state.court_count * MAX_PER_COURT
-
-    st.write(f"Max players: **{max_players}**")
+    st.write(f"Max players: **{COURT_LIMITS[st.session_state.court_count]}**")
 
     st.divider()
 
-    # =====================================================
-    # ADD PLAYER (WITH LIMIT)
-    # =====================================================
-
+    # Add player
     st.subheader("➕ Add Player")
 
     with st.form("add_player_form", clear_on_submit=True):
-
         name = st.text_input("Name")
 
         cat = st.radio(
@@ -171,11 +185,7 @@ with st.sidebar:
         submitted = st.form_submit_button("Add to Queue")
 
         if submitted and name.strip():
-
-            if len(st.session_state.queue) >= max_players:
-                st.warning("⚠️ Queue is FULL for selected courts")
-            else:
-                st.session_state.queue.append((name.strip(), cat.upper()))
+            st.session_state.queue.append((name.strip(), cat.upper()))
 
     st.divider()
 
@@ -193,7 +203,7 @@ with st.sidebar:
         st.session_state.started = False
 
 # =========================================================
-# AUTO FILL
+# AUTO FILL (ALWAYS RUN)
 # =========================================================
 
 auto_fill_empty_courts()
