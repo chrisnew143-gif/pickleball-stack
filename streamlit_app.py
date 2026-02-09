@@ -21,7 +21,7 @@ COURT_LIMITS = {
 # =========================================================
 
 st.set_page_config(
-    page_title="TiraDinks Pickleball Auto Stack",
+    page_title="Pickleball Auto Stack",
     page_icon="🎾",
     layout="wide"
 )
@@ -154,7 +154,7 @@ if "court_count" not in st.session_state:
 # HEADER
 # =========================================================
 
-st.title("🎾 TiraDinks Pickleball Auto Stack")
+st.title("🎾 Pickleball Auto Stack")
 st.caption("First come • first play • fair rotation")
 
 
