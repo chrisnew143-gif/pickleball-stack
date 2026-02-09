@@ -15,7 +15,6 @@ COURT_LIMITS = {
     7: 66
 }
 
-
 # =========================================================
 # PAGE
 # =========================================================
@@ -25,6 +24,10 @@ st.set_page_config(
     page_icon="🎾",
     layout="wide"
 )
+
+# =========================================================
+# STYLES
+# =========================================================
 
 st.markdown("""
 <style>
@@ -46,7 +49,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-
 # =========================================================
 # HELPERS
 # =========================================================
@@ -67,7 +69,6 @@ def make_teams(players):
     random.shuffle(players)
     return [players[:2], players[2:]]
 
-
 # =========================================================
 # FIFO SAFE MATCHING
 # =========================================================
@@ -78,13 +79,14 @@ def is_safe_combo(players):
 
 
 def pick_four_fifo_safe(queue):
+    """Always picks earliest safe 4 players"""
     if len(queue) < 4:
         return None
 
     temp = list(queue)
 
-    for shift in range(len(temp) - 3):
-        group = temp[shift:shift+4]
+    for i in range(len(temp) - 3):
+        group = temp[i:i+4]
 
         if is_safe_combo(group):
             for p in group:
@@ -93,7 +95,6 @@ def pick_four_fifo_safe(queue):
 
     return None
 
-
 # =========================================================
 # COURT LOGIC
 # =========================================================
@@ -101,12 +102,11 @@ def pick_four_fifo_safe(queue):
 def start_match(court_id):
     four = pick_four_fifo_safe(st.session_state.queue)
 
-    if four:
-        st.session_state.courts[court_id] = make_teams(four)
-        return True
+    if not four:
+        return False
 
-    st.session_state.courts[court_id] = None
-    return False
+    st.session_state.courts[court_id] = make_teams(four)
+    return True
 
 
 def finish_match(court_id, winner_idx):
@@ -115,23 +115,20 @@ def finish_match(court_id, winner_idx):
     winners = teams[winner_idx]
     losers = teams[1 - winner_idx]
 
+    # FIFO rotation → winners & losers go back
     st.session_state.queue.extend(winners + losers)
-    start_match(court_id)
+
+    st.session_state.courts[court_id] = None
 
 
 def auto_fill_empty_courts():
+    """Always fill courts every rerun (NO rerun needed)"""
     if not st.session_state.started:
-        return False
-
-    changed = False
+        return
 
     for c in st.session_state.courts:
         if st.session_state.courts[c] is None:
-            if start_match(c):
-                changed = True
-
-    return changed
-
+            start_match(c)
 
 # =========================================================
 # SESSION STATE
@@ -149,14 +146,12 @@ if "started" not in st.session_state:
 if "court_count" not in st.session_state:
     st.session_state.court_count = 2
 
-
 # =========================================================
 # HEADER
 # =========================================================
 
 st.title("🎾 Pickleball Auto Stack")
 st.caption("First come • first play • fair rotation")
-
 
 # =========================================================
 # SIDEBAR
@@ -168,13 +163,14 @@ with st.sidebar:
 
     st.session_state.court_count = st.selectbox(
         "Number of courts",
-        list(COURT_LIMITS.keys())   # ✅ dynamic 2–7
+        list(COURT_LIMITS.keys())
     )
 
     st.write(f"Max players: **{COURT_LIMITS[st.session_state.court_count]}**")
 
     st.divider()
 
+    # ---------------- ADD PLAYER ----------------
     st.subheader("➕ Add Player")
 
     with st.form("add_player_form", clear_on_submit=True):
@@ -193,28 +189,23 @@ with st.sidebar:
 
     st.divider()
 
-    if st.button("🚀 Start Games"):
+    # ---------------- CONTROLS ----------------
+    if st.button("🚀 Start Games", use_container_width=True):
         st.session_state.started = True
         st.session_state.courts = {
             i: None for i in range(1, st.session_state.court_count + 1)
         }
-        st.rerun()
 
-    if st.button("🔄 Reset All"):
+    if st.button("🔄 Reset All", use_container_width=True):
         st.session_state.queue = deque()
         st.session_state.courts = {}
         st.session_state.started = False
-        st.rerun()
-
 
 # =========================================================
-# AUTO FILL
+# AUTO FILL (FIXED — ALWAYS RUN)
 # =========================================================
 
-changed = auto_fill_empty_courts()
-if changed:
-    st.rerun()
-
+auto_fill_empty_courts()
 
 # =========================================================
 # WAITING LIST
@@ -232,7 +223,6 @@ if waiting:
 else:
     st.success("No players waiting 🎉")
 
-
 # =========================================================
 # STOP IF NOT STARTED
 # =========================================================
@@ -241,16 +231,14 @@ if not st.session_state.started:
     st.info("Add players then press **Start Games**")
     st.stop()
 
-
 # =========================================================
-# COURTS DISPLAY (WRAP FOR MANY COURTS)
+# COURTS DISPLAY
 # =========================================================
 
 st.divider()
 st.subheader("🏟 Live Courts")
 
-per_row = 3   # nice layout when many courts
-
+per_row = 3
 court_ids = list(st.session_state.courts.keys())
 
 for row in range(0, len(court_ids), per_row):
@@ -278,11 +266,9 @@ for row in range(0, len(court_ids), per_row):
 
                 if c1.button("🏆 A Wins", key=f"a{court_id}"):
                     finish_match(court_id, 0)
-                    st.rerun()
 
                 if c2.button("🏆 B Wins", key=f"b{court_id}"):
                     finish_match(court_id, 1)
-                    st.rerun()
 
             else:
                 st.info("Waiting for players...")
