@@ -7,13 +7,8 @@ from itertools import combinations
 # ======================================================
 # PAGE
 # ======================================================
-st.set_page_config(
-    page_title="Pickleball Auto Stack",
-    page_icon="🎾",
-    layout="wide",
-)
+st.set_page_config(page_title="Pickleball Auto Stack", page_icon="🎾", layout="wide")
 
-# --- HARD HIDE GITHUB / TOOLBAR ---
 st.markdown("""
 <style>
 #MainMenu {visibility:hidden;}
@@ -27,12 +22,10 @@ header {visibility:hidden;}
     background:#f4f6fa;
     margin-bottom:12px;
 }
-
 .waiting-box{
     background:#fff3cd;
     padding:10px;
     border-radius:10px;
-    font-size:14px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -45,26 +38,18 @@ st.caption("First come • first play • fair rotation")
 # HELPERS
 # ======================================================
 def icon(skill):
-    return {
-        "BEGINNER": "🟢",
-        "NOVICE": "🟡",
-        "INTERMEDIATE": "🔴"
-    }[skill]
-
+    return {"BEGINNER":"🟢","NOVICE":"🟡","INTERMEDIATE":"🔴"}[skill]
 
 def fmt(p):
-    name, skill, _ = p
-    return f"{icon(skill)} {name}"
+    return f"{icon(p[1])} {p[0]}"
 
 
 # ======================================================
 # SAFETY RULE
-# Beginner ❌ Intermediate together
 # ======================================================
 def safe_group(players):
     skills = {p[1] for p in players}
     return not ("BEGINNER" in skills and "INTERMEDIATE" in skills)
-
 
 def make_teams(players):
     random.shuffle(players)
@@ -76,7 +61,6 @@ def make_teams(players):
 # ======================================================
 def init():
     ss = st.session_state
-
     ss.setdefault("queue", deque())
     ss.setdefault("courts", {})
     ss.setdefault("locked", {})
@@ -84,8 +68,10 @@ def init():
     ss.setdefault("history", [])
     ss.setdefault("started", False)
     ss.setdefault("court_count", 2)
-    ss.setdefault("players_master", {})  # name → dupr
 
+    # Player master stats
+    ss.setdefault("players", {})  
+    # name → {dupr, games, wins, losses}
 
 init()
 
@@ -101,14 +87,11 @@ def take_four_safe():
 
     for combo in combinations(range(len(q)), 4):
         group = [q[i] for i in combo]
-
         if safe_group(group):
             for i in sorted(combo, reverse=True):
                 del q[i]
-
             st.session_state.queue = deque(q)
             return group
-
     return None
 
 
@@ -129,18 +112,47 @@ def finish_match(cid):
     teams = st.session_state.courts[cid]
     scoreA, scoreB = st.session_state.scores[cid]
 
-    players = teams[0] + teams[1]
+    teamA = teams[0]
+    teamB = teams[1]
 
+    # Determine winner
+    if scoreA > scoreB:
+        winner = "Team A"
+        winners = teamA
+        losers = teamB
+    elif scoreB > scoreA:
+        winner = "Team B"
+        winners = teamB
+        losers = teamA
+    else:
+        winner = "DRAW"
+        winners = []
+        losers = []
+
+    # Update player stats
+    for p in teamA + teamB:
+        st.session_state.players[p[0]]["games"] += 1
+
+    for p in winners:
+        st.session_state.players[p[0]]["wins"] += 1
+
+    for p in losers:
+        st.session_state.players[p[0]]["losses"] += 1
+
+    # Save match history
     st.session_state.history.append({
         "Court": cid,
-        "Team A": " & ".join(p[0] for p in teams[0]),
-        "Team B": " & ".join(p[0] for p in teams[1]),
+        "Team A": " & ".join(p[0] for p in teamA),
+        "Team B": " & ".join(p[0] for p in teamB),
         "Score A": scoreA,
-        "Score B": scoreB
+        "Score B": scoreB,
+        "Winner": winner
     })
 
-    random.shuffle(players)
-    st.session_state.queue.extend(players)
+    # Rotate players back to queue
+    all_players = teamA + teamB
+    random.shuffle(all_players)
+    st.session_state.queue.extend(all_players)
 
     st.session_state.courts[cid] = None
     st.session_state.locked[cid] = False
@@ -150,89 +162,67 @@ def finish_match(cid):
 def auto_fill():
     if not st.session_state.started:
         return
-
     for cid in st.session_state.courts:
         if st.session_state.courts[cid] is None:
             start_match(cid)
 
 
 # ======================================================
-# CSV EXPORTS (NO OPENPYXL)
+# CSV EXPORTS
 # ======================================================
 def matches_csv():
     if not st.session_state.history:
         return b""
-
-    df = pd.DataFrame(st.session_state.history)
-    return df.to_csv(index=False).encode()
+    return pd.DataFrame(st.session_state.history).to_csv(index=False).encode()
 
 
 def players_csv():
-    if not st.session_state.players_master:
-        return b""
-
-    df = pd.DataFrame(
-        [(k, v) for k, v in st.session_state.players_master.items()],
-        columns=["Player Name", "DUPR ID"]
-    )
-
-    return df.to_csv(index=False).encode()
+    rows = []
+    for name, data in st.session_state.players.items():
+        rows.append({
+            "Player Name": name,
+            "DUPR ID": data["dupr"],
+            "Games Played": data["games"],
+            "Wins": data["wins"],
+            "Losses": data["losses"],
+        })
+    return pd.DataFrame(rows).to_csv(index=False).encode()
 
 
 # ======================================================
 # SIDEBAR
 # ======================================================
 with st.sidebar:
-
     st.header("⚙ Setup")
 
-    st.session_state.court_count = st.selectbox(
-        "Courts", [2, 3, 4, 5, 6]
-    )
+    st.session_state.court_count = st.selectbox("Courts", [2,3,4,5,6])
 
-    # ADD PLAYER (FRONT)
     with st.form("add", clear_on_submit=True):
-
         name = st.text_input("Name")
         dupr = st.text_input("DUPR ID (optional)")
-        skill = st.radio("Skill", ["Beginner", "Novice", "Intermediate"])
+        skill = st.radio("Skill", ["Beginner","Novice","Intermediate"])
 
-        if st.form_submit_button("Add Player"):
-            if name:
-                player = (name, skill.upper(), dupr)
+        if st.form_submit_button("Add Player") and name:
+            st.session_state.queue.appendleft((name, skill.upper(), dupr))
 
-                # add to FRONT
-                st.session_state.queue.appendleft(player)
-
-                # save master list
-                st.session_state.players_master[name] = dupr
-
-    # REMOVE
-    if st.session_state.queue:
-        names = [p[0] for p in st.session_state.queue]
-
-        pick = st.selectbox("Remove Player", names)
-
-        if st.button("Remove"):
-            st.session_state.queue = deque(
-                [p for p in st.session_state.queue if p[0] != pick]
-            )
-            st.rerun()
-
-    st.divider()
+            if name not in st.session_state.players:
+                st.session_state.players[name] = {
+                    "dupr": dupr,
+                    "games": 0,
+                    "wins": 0,
+                    "losses": 0
+                }
 
     if st.button("🚀 Start Games"):
         st.session_state.started = True
-        st.session_state.courts = {i: None for i in range(1, st.session_state.court_count + 1)}
-        st.session_state.locked = {i: False for i in range(1, st.session_state.court_count + 1)}
-        st.session_state.scores = {i: [0, 0] for i in range(1, st.session_state.court_count + 1)}
+        st.session_state.courts = {i:None for i in range(1, st.session_state.court_count+1)}
+        st.session_state.locked = {i:False for i in st.session_state.courts}
+        st.session_state.scores = {i:[0,0] for i in st.session_state.courts}
         st.rerun()
 
     if st.button("🔄 Reset"):
         st.session_state.clear()
         st.rerun()
-
-    st.divider()
 
     st.download_button("📥 Matches CSV", matches_csv(), "matches.csv")
     st.download_button("📥 Players CSV", players_csv(), "players.csv")
@@ -242,7 +232,6 @@ with st.sidebar:
 # QUEUE
 # ======================================================
 auto_fill()
-
 st.subheader("⏳ Waiting Queue")
 
 if st.session_state.queue:
@@ -258,7 +247,7 @@ if not st.session_state.started:
 
 
 # ======================================================
-# COURTS (COMPACT GRID)
+# COURTS
 # ======================================================
 st.divider()
 st.subheader("🏟 Live Courts")
@@ -266,14 +255,11 @@ st.subheader("🏟 Live Courts")
 cols = st.columns(2)
 
 for i, cid in enumerate(st.session_state.courts):
-
     with cols[i % 2]:
-
         st.markdown('<div class="court-card">', unsafe_allow_html=True)
         st.markdown(f"### Court {cid}")
 
         teams = st.session_state.courts[cid]
-
         if not teams:
             st.info("Waiting for safe players...")
             st.markdown('</div>', unsafe_allow_html=True)
