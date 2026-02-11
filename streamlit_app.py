@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 # =========================================================
-# CSS (hide only github icon)
+# CSS
 # =========================================================
 st.markdown("""
 <style>
@@ -105,7 +105,6 @@ def finish_match(cid):
 
     players = teams[0] + teams[1]
 
-    # save history
     st.session_state.history.append({
         "Court": cid,
         "Team A": " & ".join(p[0] for p in teams[0]),
@@ -114,11 +113,9 @@ def finish_match(cid):
         "Score B": scoreB
     })
 
-    # mix back
     random.shuffle(players)
     st.session_state.queue.extend(players)
 
-    # reset
     st.session_state.courts[cid] = None
     st.session_state.locked[cid] = False
     st.session_state.scores[cid] = [0, 0]
@@ -131,6 +128,16 @@ def auto_fill():
     for cid in st.session_state.courts:
         if st.session_state.courts[cid] is None:
             start_match(cid)
+
+
+# =========================================================
+# 🆕 DELETE PLAYER FUNCTION
+# =========================================================
+def delete_player(target):
+    """Remove player only from waiting queue"""
+    st.session_state.queue = deque(
+        p for p in st.session_state.queue if p != target
+    )
 
 
 # =========================================================
@@ -151,6 +158,9 @@ with st.sidebar:
 
     st.session_state.court_count = st.selectbox("Courts", [2,3,4,5,6])
 
+    # -------------------------
+    # ADD PLAYER
+    # -------------------------
     with st.form("add", clear_on_submit=True):
         name = st.text_input("Name")
         skill = st.radio("Skill", ["Beginner","Novice","Intermediate"])
@@ -159,6 +169,28 @@ with st.sidebar:
         if ok and name:
             st.session_state.queue.append((name, skill.upper()))
 
+    # -------------------------
+    # 🆕 DELETE PLAYER
+    # -------------------------
+    if st.session_state.queue:
+        st.divider()
+        st.subheader("❌ Remove Player")
+
+        player_to_remove = st.selectbox(
+            "Select player",
+            list(st.session_state.queue),
+            format_func=lambda x: fmt(x)
+        )
+
+        if st.button("Delete Selected Player"):
+            delete_player(player_to_remove)
+            st.rerun()
+
+    st.divider()
+
+    # -------------------------
+    # START
+    # -------------------------
     if st.button("🚀 Start Games"):
         st.session_state.started = True
         st.session_state.courts = {i:None for i in range(1, st.session_state.court_count+1)}
@@ -166,6 +198,9 @@ with st.sidebar:
         st.session_state.scores = {i:[0,0] for i in range(1, st.session_state.court_count+1)}
         st.rerun()
 
+    # -------------------------
+    # RESET
+    # -------------------------
     if st.button("🔄 Reset"):
         st.session_state.clear()
         st.rerun()
@@ -179,13 +214,13 @@ with st.sidebar:
 
 
 # =========================================================
-# 🔥 IMPORTANT: FILL COURTS FIRST (FIXES YOUR BUG)
+# FILL COURTS
 # =========================================================
 auto_fill()
 
 
 # =========================================================
-# WAITING QUEUE (now correct)
+# WAITING QUEUE
 # =========================================================
 st.subheader("⏳ Waiting Queue")
 
@@ -198,9 +233,6 @@ else:
     st.success("No players waiting 🎉")
 
 
-# =========================================================
-# STOP
-# =========================================================
 if not st.session_state.started:
     st.stop()
 
@@ -218,7 +250,6 @@ for r in range(0, len(ids), per_row):
     cols = st.columns(per_row)
 
     for i, cid in enumerate(ids[r:r+per_row]):
-
         with cols[i]:
             st.markdown('<div class="court-card">', unsafe_allow_html=True)
 
