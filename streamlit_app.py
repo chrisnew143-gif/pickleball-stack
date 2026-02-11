@@ -56,9 +56,31 @@ def fmt(p):
     return f"{icon(p[1])} {p[0]}"
 
 
+# ---------------------------------------------------------
+# ⭐ SMART TEAM BALANCER (NEW)
+# ---------------------------------------------------------
+skill_rank = {
+    "BEGINNER": 1,
+    "NOVICE": 2,
+    "INTERMEDIATE": 3
+}
+
 def make_teams(players):
+    """
+    Balanced snake draft:
+    strongest -> A
+    next -> B
+    next -> B
+    last -> A
+    """
     random.shuffle(players)
-    return [players[:2], players[2:]]
+
+    players.sort(key=lambda x: skill_rank[x[1]], reverse=True)
+
+    teamA = [players[0], players[3]]
+    teamB = [players[1], players[2]]
+
+    return [teamA, teamB]
 
 
 # =========================================================
@@ -131,10 +153,9 @@ def auto_fill():
 
 
 # =========================================================
-# 🆕 DELETE PLAYER FUNCTION
+# DELETE PLAYER
 # =========================================================
 def delete_player(target):
-    """Remove player only from waiting queue"""
     st.session_state.queue = deque(
         p for p in st.session_state.queue if p != target
     )
@@ -158,20 +179,21 @@ with st.sidebar:
 
     st.session_state.court_count = st.selectbox("Courts", [2,3,4,5,6])
 
-    # -------------------------
-    # ADD PLAYER
-    # -------------------------
+    # -----------------------------------------------------
+    # ⭐ ADD PLAYER (NEW = FIRST POSITION)
+    # -----------------------------------------------------
     with st.form("add", clear_on_submit=True):
         name = st.text_input("Name")
         skill = st.radio("Skill", ["Beginner","Novice","Intermediate"])
         ok = st.form_submit_button("Add Player")
 
         if ok and name:
-            st.session_state.queue.append((name, skill.upper()))
+            st.session_state.queue.appendleft((name, skill.upper()))
+            st.rerun()
 
-    # -------------------------
-    # 🆕 DELETE PLAYER
-    # -------------------------
+    # -----------------------------------------------------
+    # DELETE
+    # -----------------------------------------------------
     if st.session_state.queue:
         st.divider()
         st.subheader("❌ Remove Player")
@@ -188,9 +210,6 @@ with st.sidebar:
 
     st.divider()
 
-    # -------------------------
-    # START
-    # -------------------------
     if st.button("🚀 Start Games"):
         st.session_state.started = True
         st.session_state.courts = {i:None for i in range(1, st.session_state.court_count+1)}
@@ -198,9 +217,6 @@ with st.sidebar:
         st.session_state.scores = {i:[0,0] for i in range(1, st.session_state.court_count+1)}
         st.rerun()
 
-    # -------------------------
-    # RESET
-    # -------------------------
     if st.button("🔄 Reset"):
         st.session_state.clear()
         st.rerun()
