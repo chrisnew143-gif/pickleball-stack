@@ -83,21 +83,33 @@ def persist_state():
     save_json(SCORES_FILE, ss.scores)
     save_json(HISTORY_FILE, ss.history)
 
+def load_saved_state():
+    ss = st.session_state
+    ss.queue = deque(load_json(QUEUE_FILE, []))
+    ss.players = load_json(PLAYERS_FILE, {})
+    ss.courts = load_json(COURTS_FILE, {})
+    ss.scores = load_json(SCORES_FILE, {})
+    ss.history = load_json(HISTORY_FILE, [])
+    ss.started = bool(ss.courts)
+    ss.locked = {int(k):True for k,v in ss.courts.items() if v}
+
 # ======================================================
 # SESSION INIT
 # ======================================================
 def init():
     ss = st.session_state
-
-    ss.setdefault("queue", deque(load_json(QUEUE_FILE, [])))
-    ss.setdefault("players", load_json(PLAYERS_FILE, {}))
-    ss.setdefault("courts", load_json(COURTS_FILE, {}))
-    ss.setdefault("scores", load_json(SCORES_FILE, {}))
-    ss.setdefault("history", load_json(HISTORY_FILE, []))
+    ss.setdefault("queue", deque())
+    ss.setdefault("players", {})
+    ss.setdefault("courts", {})
+    ss.setdefault("scores", {})
+    ss.setdefault("history", [])
     ss.setdefault("started", False)
-    ss.setdefault("court_count", max(len(ss.courts), 2))
-    ss.setdefault("locked", {int(k):True for k,v in ss.courts.items() if v})
+    ss.setdefault("court_count", 2)
+    ss.setdefault("locked", {})
     ss.setdefault("last_save_time", time.time())
+    
+    # Load previous state if exists
+    load_saved_state()
     
 init()
 
@@ -257,7 +269,7 @@ with st.sidebar:
             delete_player(remove)
             st.rerun()
 
-    # Start
+    # Start games
     if st.button("🚀 Start Games"):
         st.session_state.started = True
         st.session_state.courts = {i:None for i in range(1, st.session_state.court_count+1)}
@@ -276,10 +288,16 @@ with st.sidebar:
 
     st.divider()
 
-    # MANUAL SAVE BUTTON
+    # Manual save
     if st.button("💾 Save Now"):
         persist_state()
         st.success("Data saved!")
+
+    # Load saved data
+    if st.button("📂 Load Saved Data"):
+        load_saved_state()
+        st.success("Saved data loaded!")
+        st.experimental_rerun()
 
     st.divider()
     st.download_button("📥 Matches CSV", matches_csv(), "matches.csv")
@@ -291,7 +309,6 @@ with st.sidebar:
 if time.time() - st.session_state.last_save_time > 10:
     persist_state()
     st.session_state.last_save_time = time.time()
-    st.info("💾 Auto-saved data")
 
 # ======================================================
 # MAIN
