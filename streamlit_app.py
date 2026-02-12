@@ -70,10 +70,7 @@ init()
 # DELETE PLAYER
 # ======================================================
 def delete_player(name):
-    # Remove from queue
     st.session_state.queue = deque([p for p in st.session_state.queue if p[0] != name])
-    
-    # Remove from courts
     for cid, teams in st.session_state.courts.items():
         if not teams:
             continue
@@ -85,8 +82,6 @@ def delete_player(name):
             st.session_state.locked[cid] = False
         else:
             st.session_state.courts[cid] = new_teams
-
-    # Remove player stats
     st.session_state.players.pop(name, None)
 
 # ======================================================
@@ -130,7 +125,6 @@ def finish_match(cid):
         winner = "DRAW"
         winners = losers = []
 
-    # Update stats
     for p in teamA + teamB:
         st.session_state.players[p[0]]["games"] += 1
     for p in winners:
@@ -138,7 +132,6 @@ def finish_match(cid):
     for p in losers:
         st.session_state.players[p[0]]["losses"] += 1
 
-    # Save match history
     st.session_state.history.append({
         "Court": cid,
         "Team A": " & ".join(p[0] for p in teamA),
@@ -148,7 +141,6 @@ def finish_match(cid):
         "Winner": winner
     })
 
-    # Rotate back to queue
     players = teamA + teamB
     random.shuffle(players)
     st.session_state.queue.extend(players)
@@ -185,7 +177,7 @@ def players_csv():
     return pd.DataFrame(rows).to_csv(index=False).encode()
 
 # ======================================================
-# PROFILE SAVE/LOAD
+# PROFILE SAVE / LOAD / DELETE
 # ======================================================
 SAVE_DIR = "profiles"
 os.makedirs(SAVE_DIR, exist_ok=True)
@@ -212,7 +204,6 @@ def load_profile(name):
         return
     with open(path, "r") as f:
         data = json.load(f)
-
     st.session_state.queue = deque(data["queue"])
     st.session_state.courts = data["courts"]
     st.session_state.locked = data["locked"]
@@ -221,8 +212,16 @@ def load_profile(name):
     st.session_state.started = data["started"]
     st.session_state.court_count = data["court_count"]
     st.session_state.players = data["players"]
-
     st.success(f"Profile '{name}' loaded!")
+
+def delete_profile(name):
+    path = os.path.join(SAVE_DIR, f"{name}.json")
+    if os.path.exists(path):
+        os.remove(path)
+        st.success(f"Profile '{name}' deleted!")
+        st.rerun()
+    else:
+        st.error("Profile not found!")
 
 # ======================================================
 # SIDEBAR
@@ -268,17 +267,19 @@ with st.sidebar:
     st.download_button("📥 Players CSV", players_csv(), "players.csv")
 
     st.divider()
-    # Profile Save/Load
+    # Profile Save/Load/Delete
     st.header("💾 Profiles")
     profile_name = st.text_input("Profile Name")
     col1, col2 = st.columns(2)
     if col1.button("Save Profile") and profile_name:
         save_profile(profile_name)
     profiles = [f[:-5] for f in os.listdir(SAVE_DIR) if f.endswith(".json")]
-    selected_profile = st.selectbox("Load Profile", [""] + profiles)
+    selected_profile = st.selectbox("Select Profile", [""] + profiles)
     if col2.button("Load Profile") and selected_profile:
         load_profile(selected_profile)
         st.rerun()
+    if st.button("Delete Profile") and selected_profile:
+        delete_profile(selected_profile)
 
 # ======================================================
 # MAIN
