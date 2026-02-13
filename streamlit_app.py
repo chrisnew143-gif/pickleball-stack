@@ -219,7 +219,6 @@ def delete_profile(name):
     if os.path.exists(path):
         os.remove(path)
         st.success(f"Profile '{name}' deleted!")
-        st.rerun()
     else:
         st.error("Profile not found!")
 
@@ -229,7 +228,9 @@ def delete_profile(name):
 with st.sidebar:
     st.header("⚙ Setup")
 
-    st.session_state.court_count = st.selectbox("Courts", [2,3,4,5,6], index=st.session_state.court_count-2)
+    st.session_state.court_count = st.selectbox(
+        "Courts", [2,3,4,5,6], index=st.session_state.court_count-2
+    )
 
     # Add player
     with st.form("add", clear_on_submit=True):
@@ -246,7 +247,6 @@ with st.sidebar:
         remove = st.selectbox("❌ Remove Player", list(st.session_state.players.keys()))
         if st.button("Delete"):
             delete_player(remove)
-            st.rerun()
 
     # Start / Reset
     col1, col2 = st.columns(2)
@@ -255,13 +255,10 @@ with st.sidebar:
         st.session_state.courts = {i:None for i in range(1, st.session_state.court_count+1)}
         st.session_state.locked = {i:False for i in st.session_state.courts}
         st.session_state.scores = {i:[0,0] for i in st.session_state.courts}
-        st.rerun()
     if col2.button("🔄 Reset"):
         st.session_state.clear()
-        st.rerun()
 
     st.divider()
-
     # Download CSV
     st.download_button("📥 Matches CSV", matches_csv(), "matches.csv")
     st.download_button("📥 Players CSV", players_csv(), "players.csv")
@@ -277,7 +274,6 @@ with st.sidebar:
     selected_profile = st.selectbox("Select Profile", [""] + profiles)
     if col2.button("Load Profile") and selected_profile:
         load_profile(selected_profile)
-        st.rerun()
     if st.button("Delete Profile") and selected_profile:
         delete_profile(selected_profile)
 
@@ -317,19 +313,24 @@ for i, cid in enumerate(st.session_state.courts):
             st.markdown('</div>', unsafe_allow_html=True)
             continue
 
-        # Display teams
         st.write("**Team A**  \n" + " & ".join(fmt(p) for p in teams[0]))
         st.write("**Team B**  \n" + " & ".join(fmt(p) for p in teams[1]))
 
-        # ==================================================
-        # SWITCH PARTNERS BUTTON (before match)
-        # ==================================================
-        if st.button("🔀 Switch Partners", key=f"switch{cid}"):
-            # Swap one player from each team
+        # =============================
+        # Switch Partners Button
+        # =============================
+        switch_key = f"switch{cid}"
+        if switch_key not in st.session_state:
+            st.session_state[switch_key] = False
+
+        if st.button("🔀 Switch Partners", key=switch_key):
             if len(teams[0]) == 2 and len(teams[1]) == 2:
                 teams[0][1], teams[1][1] = teams[1][1], teams[0][1]
                 st.session_state.courts[cid] = teams
-                st.experimental_rerun()
+                st.session_state[switch_key] = True
+
+        if st.session_state.get(switch_key, False):
+            st.session_state[switch_key] = False
 
         # Score input
         a = st.number_input("Score A", 0, key=f"A{cid}")
@@ -338,6 +339,5 @@ for i, cid in enumerate(st.session_state.courts):
         if st.button("Submit Score", key=f"S{cid}"):
             st.session_state.scores[cid] = [a, b]
             finish_match(cid)
-            st.rerun()
 
         st.markdown('</div>', unsafe_allow_html=True)
