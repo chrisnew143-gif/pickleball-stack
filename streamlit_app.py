@@ -286,12 +286,34 @@ with st.sidebar:
 # ======================================================
 auto_fill()
 
+# ======================================================
+# WAITING QUEUE (WITH STACK POSITION NUMBERS)
+# ======================================================
 st.subheader("⏳ Waiting Queue")
+
+def sup(n):
+    """Convert number → superscript"""
+    return str(n).translate(str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹"))
+
 if st.session_state.queue:
+
+    q = list(st.session_state.queue)
+
+    # newest (appendleft) = 0
+    # oldest gets highest number
+    total = len(q) - 1
+
+    formatted_players = []
+
+    for i, p in enumerate(q):
+        position = total - i
+        formatted_players.append(f"{icon(p[1])} {sup(position)} {p[0]}")
+
     st.markdown(
-        f'<div class="waiting-box">{", ".join(fmt(p) for p in st.session_state.queue)}</div>',
+        f'<div class="waiting-box">{", ".join(formatted_players)}</div>',
         unsafe_allow_html=True
     )
+
 else:
     st.success("No players waiting 🎉")
 
