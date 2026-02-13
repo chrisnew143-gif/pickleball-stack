@@ -31,7 +31,7 @@ a[href*="github.com/streamlit"]{display:none!important;}
 """, unsafe_allow_html=True)
 
 st.title("🎾 Pickleball Auto Stack")
-st.caption("First come • first play • fair rotation • court preference supported")
+st.caption("First come • first play • fair rotation • preferred court supported")
 
 # ======================================================
 # HELPERS
@@ -45,7 +45,6 @@ def superscript_number(n):
     return str(n).translate(sup_map)
 
 
-# UPDATED (shows court preference)
 def fmt(p):
     name, skill, dupr, pref = p
     games = st.session_state.players.get(name, {}).get("games", 0)
@@ -90,6 +89,7 @@ def delete_player(name):
         new_teams = []
         for team in teams:
             new_teams.append([p for p in team if p[0] != name])
+
         if len(new_teams[0]) < 2 or len(new_teams[1]) < 2:
             st.session_state.courts[cid] = None
             st.session_state.locked[cid] = False
@@ -101,15 +101,12 @@ def delete_player(name):
 # ======================================================
 # MATCH ENGINE
 # ======================================================
-
-# NEW — preference aware
 def take_four_safe_for_court(cid):
     q = list(st.session_state.queue)
     if len(q) < 4:
         return None
 
     preferred = [p for p in q if p[3] == cid or p[3] == 0]
-
     source = preferred if len(preferred) >= 4 else q
 
     for combo in combinations(range(len(source)), 4):
@@ -155,8 +152,10 @@ def finish_match(cid):
 
     for p in teamA + teamB:
         st.session_state.players[p[0]]["games"] += 1
+
     for p in winners:
         st.session_state.players[p[0]]["wins"] += 1
+
     for p in losers:
         st.session_state.players[p[0]]["losses"] += 1
 
@@ -186,7 +185,7 @@ def auto_fill():
             start_match(cid)
 
 # ======================================================
-# CSV EXPORTS
+# CSV EXPORT
 # ======================================================
 def matches_csv():
     if not st.session_state.history:
@@ -201,14 +200,47 @@ def players_csv():
             "Player Name": name,
             "DUPR ID": data["dupr"],
             "Preferred Court": data.get("pref", 0),
-            "Games Played": data["games"],
+            "Games": data["games"],
             "Wins": data["wins"],
             "Losses": data["losses"]
         })
     return pd.DataFrame(rows).to_csv(index=False).encode()
 
 # ======================================================
-# SIDEBAR
+# PROFILE SAVE / LOAD / DELETE  (RESTORED)
+# ======================================================
+SAVE_DIR = "profiles"
+os.makedirs(SAVE_DIR, exist_ok=True)
+
+
+def save_profile(name):
+    data = dict(st.session_state)
+    data["queue"] = list(data["queue"])
+
+    with open(os.path.join(SAVE_DIR, f"{name}.json"), "w") as f:
+        json.dump(data, f)
+
+    st.success(f"Profile '{name}' saved!")
+
+
+def load_profile(name):
+    path = os.path.join(SAVE_DIR, f"{name}.json")
+
+    with open(path, "r") as f:
+        data = json.load(f)
+
+    st.session_state.update(data)
+    st.session_state.queue = deque(data["queue"])
+
+    st.success(f"Profile '{name}' loaded!")
+
+
+def delete_profile(name):
+    os.remove(os.path.join(SAVE_DIR, f"{name}.json"))
+    st.success("Profile deleted!")
+
+# ======================================================
+# SIDEBAR (FULLY RESTORED)
 # ======================================================
 with st.sidebar:
     st.header("⚙ Setup")
@@ -218,87 +250,61 @@ with st.sidebar:
         index=st.session_state.court_count-2
     )
 
-    # ADD PLAYER (UPDATED)
+    # ADD PLAYER
     with st.form("add", clear_on_submit=True):
         name = st.text_input("Name")
         dupr = st.text_input("DUPR ID")
         skill = st.radio("Skill", ["Beginner","Novice","Intermediate"])
-
-        pref = st.selectbox(
-            "Preferred Court",
-            ["Any"] + list(range(1, st.session_state.court_count + 1))
-        )
+        pref = st.selectbox("Preferred Court", ["Any"] + list(range(1, st.session_state.court_count+1)))
 
         if st.form_submit_button("Add Player") and name:
             pref_val = 0 if pref == "Any" else int(pref)
+            st.session_state.queue.appendleft((name, skill.upper(), dupr, pref_val))
+            st.session_state.players.setdefault(name, {"dupr":dupr,"games":0,"wins":0,"losses":0,"pref":pref_val})
 
-            st.session_state.queue.appendleft(
-                (name, skill.upper(), dupr, pref_val)
-            )
+    # DELETE PLAYER
+    if st.session_state.players:
+        st.divider()
+        remove = st.selectbox("❌ Remove Player", list(st.session_state.players.keys()))
+        if st.button("Delete"):
+            delete_player(remove)
+            st.rerun()
 
-            st.session_state.players.setdefault(
-                name,
-                {"dupr":dupr,"games":0,"wins":0,"losses":0,"pref":pref_val}
-            )
-
-    # START
-    if st.button("🚀 Start Games"):
+    # START / RESET (RESTORED)
+    col1, col2 = st.columns(2)
+    if col1.button("🚀 Start Games"):
         st.session_state.started = True
         st.session_state.courts = {i:None for i in range(1, st.session_state.court_count+1)}
         st.session_state.locked = {i:False for i in st.session_state.courts}
         st.session_state.scores = {i:[0,0] for i in st.session_state.courts}
         st.rerun()
 
-# ======================================================
-# MAIN
-# ======================================================
-auto_fill()
+    if col2.button("🔄 Reset"):
+        st.session_state.clear()
+        st.rerun()
 
-st.subheader("⏳ Waiting Queue")
+    st.divider()
 
-if st.session_state.queue:
-    st.markdown(
-        f'<div class="waiting-box">{", ".join(fmt(p) for p in st.session_state.queue)}</div>',
-        unsafe_allow_html=True
-    )
-else:
-    st.success("No players waiting 🎉")
+    st.download_button("📥 Matches CSV", matches_csv(), "matches.csv")
+    st.download_button("📥 Players CSV", players_csv(), "players.csv")
 
-if not st.session_state.started:
-    st.stop()
+    # PROFILES (RESTORED)
+    st.divider()
+    st.header("💾 Profiles")
 
-# ======================================================
-# COURTS
-# ======================================================
-st.divider()
-st.subheader("🏟 Live Courts")
+    profile_name = st.text_input("Profile Name")
 
-cols = st.columns(2)
+    col1, col2 = st.columns(2)
 
-for i, cid in enumerate(st.session_state.courts):
-    with cols[i % 2]:
-        st.markdown('<div class="court-card">', unsafe_allow_html=True)
+    if col1.button("Save Profile") and profile_name:
+        save_profile(profile_name)
 
-        st.markdown(f"### Court {cid}")
-        teams = st.session_state.courts[cid]
+    profiles = [f[:-5] for f in os.listdir(SAVE_DIR) if f.endswith(".json")]
+    selected_profile = st.selectbox("Select Profile", [""] + profiles)
 
-        if not teams:
-            st.info("Waiting for safe players...")
-            st.markdown('</div>', unsafe_allow_html=True)
-            continue
+    if col2.button("Load Profile") and selected_profile:
+        load_profile(selected_profile)
+        st.rerun()
 
-        st.write("**Team A**  \n" + " & ".join(fmt(p) for p in teams[0]))
-        st.write("**Team B**  \n" + " & ".join(fmt(p) for p in teams[1]))
-
-        st.divider()
-
-        a, b = st.session_state.scores[cid]
-        a = st.number_input("Score A", 0, key=f"A_{cid}", value=a)
-        b = st.number_input("Score B", 0, key=f"B_{cid}", value=b)
-
-        if st.button("✅ Submit Score", key=f"submit_{cid}"):
-            st.session_state.scores[cid] = [a, b]
-            finish_match(cid)
-            st.rerun()
-
-        st.markdown('</div>', unsafe_allow_html=True)
+    if st.button("Delete Profile") and selected_profile:
+        delete_profile(selected_profile)
