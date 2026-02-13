@@ -311,14 +311,27 @@ for i, cid in enumerate(st.session_state.courts):
         st.markdown(f"### Court {cid}")
 
         teams = st.session_state.courts[cid]
+
         if not teams:
             st.info("Waiting for safe players...")
             st.markdown('</div>', unsafe_allow_html=True)
             continue
 
+        # Display teams
         st.write("**Team A**  \n" + " & ".join(fmt(p) for p in teams[0]))
         st.write("**Team B**  \n" + " & ".join(fmt(p) for p in teams[1]))
 
+        # ==================================================
+        # SWITCH PARTNERS BUTTON (before match)
+        # ==================================================
+        if st.button("🔀 Switch Partners", key=f"switch{cid}"):
+            # Swap one player from each team
+            if len(teams[0]) == 2 and len(teams[1]) == 2:
+                teams[0][1], teams[1][1] = teams[1][1], teams[0][1]
+                st.session_state.courts[cid] = teams
+                st.experimental_rerun()
+
+        # Score input
         a = st.number_input("Score A", 0, key=f"A{cid}")
         b = st.number_input("Score B", 0, key=f"B{cid}")
 
