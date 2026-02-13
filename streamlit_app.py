@@ -39,14 +39,10 @@ st.caption("First come • first play • fair rotation")
 def icon(skill):
     return {"BEGINNER":"🟢","NOVICE":"🟡","INTERMEDIATE":"🔴"}[skill]
 
-def superscript_number(n):
-    sup_map = str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹")
-    return str(n).translate(sup_map)
-
 def fmt(p):
     name, skill, dupr = p
     games = st.session_state.players.get(name, {}).get("games", 0)
-    return f"{icon(skill)} {superscript_number(games)} {name}"
+    return f"{icon(skill)} {games} {name}"
 
 def safe_group(players):
     skills = {p[1] for p in players}
@@ -118,6 +114,8 @@ def start_match(cid):
 
 def finish_match(cid):
     teams = st.session_state.courts[cid]
+    if not teams:
+        return
     scoreA, scoreB = st.session_state.scores[cid]
     teamA, teamB = teams
 
@@ -315,46 +313,51 @@ for i, cid in enumerate(st.session_state.courts):
         st.markdown(f"### Court {cid}")
         teams = st.session_state.courts[cid]
 
+        # EMPTY COURT
         if not teams:
             st.info("Waiting for safe players...")
             st.markdown('</div>', unsafe_allow_html=True)
             continue
 
-        # Swap helper: options for dropdown (waiting queue + current player)
-        queue_options = [p[0] for p in st.session_state.queue]
-
-        # Show Team A
-        for j, player in enumerate(teams[0]):
-            options = [player[0]] + queue_options
-            sel = st.selectbox(f"Team A Player {j+1}", options, index=0, key=f"A_{cid}_{j}")
-            if sel != player[0]:
-                # Swap in queue
-                old = player
-                new_player = next(p for p in st.session_state.queue if p[0]==sel)
-                teams[0][j] = new_player
-                st.session_state.queue.remove(new_player)
-                st.session_state.queue.append(old)
-                st.rerun()
-
-        # Show Team B
-        for j, player in enumerate(teams[1]):
-            options = [player[0]] + queue_options
-            sel = st.selectbox(f"Team B Player {j+1}", options, index=0, key=f"B_{cid}_{j}")
-            if sel != player[0]:
-                old = player
-                new_player = next(p for p in st.session_state.queue if p[0]==sel)
-                teams[1][j] = new_player
-                st.session_state.queue.remove(new_player)
-                st.session_state.queue.append(old)
-                st.rerun()
+        # SHOW TEAMS
+        st.write("**Team A**  \n" + " & ".join(fmt(p) for p in teams[0]))
+        st.write("**Team B**  \n" + " & ".join(fmt(p) for p in teams[1]))
 
         st.divider()
-        # Scores
-        a = st.number_input("Score A", 0, key=f"A_score_{cid}")
-        b = st.number_input("Score B", 0, key=f"B_score_{cid}")
+
+        # SCORES
+        a, b = st.session_state.scores[cid]
+        a = st.number_input("Score A", 0, key=f"A_{cid}", value=a)
+        b = st.number_input("Score B", 0, key=f"B_{cid}", value=b)
         if st.button("✅ Submit Score", key=f"submit_{cid}"):
             st.session_state.scores[cid] = [a, b]
             finish_match(cid)
             st.rerun()
+
+        # -------------------------
+        # SWAP PLAYER WITH WAITING QUEUE
+        # -------------------------
+        all_players = st.session_state.queue
+        flat_court = teams[0] + teams[1]
+        st.markdown("**Swap Player**")
+        if flat_court and all_players:
+            swap_from_court = st.selectbox(f"Select player in court {cid}", [p[0] for p in flat_court], key=f"swap_from_{cid}")
+            swap_from_queue = st.selectbox(f"Select player from waiting queue", [p[0] for p in all_players], key=f"swap_to_{cid}")
+            if st.button("🔄 Swap", key=f"swap_btn_{cid}"):
+                # Find indices
+                for idx, p in enumerate(flat_court):
+                    if p[0] == swap_from_court:
+                        court_idx = idx
+                        break
+                for idx, p in enumerate(all_players):
+                    if p[0] == swap_from_queue:
+                        queue_idx = idx
+                        break
+                # Swap
+                flat_court[court_idx], all_players[queue_idx] = all_players[queue_idx], flat_court[court_idx]
+                # Reassign teams
+                st.session_state.courts[cid] = [flat_court[:2], flat_court[2:]]
+                st.session_state.queue = deque(all_players)
+                st.rerun()
 
         st.markdown('</div>', unsafe_allow_html=True)
