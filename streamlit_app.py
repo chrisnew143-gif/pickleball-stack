@@ -262,7 +262,7 @@ if not st.session_state.started:
     st.stop()
 
 # ======================================================
-# COURTS
+# COURTS (FULL REWRITE)
 # ======================================================
 st.divider()
 st.subheader("🏟 Live Courts")
@@ -270,26 +270,56 @@ st.subheader("🏟 Live Courts")
 cols = st.columns(2)
 
 for i, cid in enumerate(st.session_state.courts):
+
     with cols[i % 2]:
-        st.markdown("### Court " + str(cid))
+
+        st.markdown('<div class="court-card">', unsafe_allow_html=True)
+        st.markdown(f"### Court {cid}")
 
         teams = st.session_state.courts[cid]
 
+        # -------------------------
+        # EMPTY COURT
+        # -------------------------
         if not teams:
-            st.info("Waiting for players...")
+            st.info("Waiting for safe players...")
+            st.markdown('</div>', unsafe_allow_html=True)
             continue
 
-        st.write("Team A:", " & ".join(fmt(p) for p in teams[0]))
-        st.write("Team B:", " & ".join(fmt(p) for p in teams[1]))
+        # -------------------------
+        # SHOW TEAMS
+        # -------------------------
+        st.write("**Team A**  \n" + " & ".join(fmt(p) for p in teams[0]))
+        st.write("**Team B**  \n" + " & ".join(fmt(p) for p in teams[1]))
 
-        # 🔀 SWITCH PARTNERS (SAFE)
-        if st.button("🔀 Switch Partners", key=f"switch_{cid}"):
-            teams[0][1], teams[1][1] = teams[1][1], teams[0][1]
-            st.session_state.courts[cid] = teams
+        # -------------------------
+        # CONTROL BUTTONS
+        # -------------------------
+        c1, c2 = st.columns(2)
 
-        a = st.number_input("Score A", 0, key=f"a_{cid}")
-        b = st.number_input("Score B", 0, key=f"b_{cid}")
+        # 🔀 Shuffle all 4 players (BEST OPTION)
+        if c1.button("🔀 Shuffle Teams", key=f"shuffle_{cid}"):
+            players = teams[0] + teams[1]
+            random.shuffle(players)
+            st.session_state.courts[cid] = [players[:2], players[2:]]
+            st.rerun()
 
-        if st.button("Submit Score", key=f"submit_{cid}"):
-            st.session_state.scores[cid] = [a,b]
+        # 🔁 Rematch same teams (reset scores only)
+        if c2.button("🔁 Rematch", key=f"rematch_{cid}"):
+            st.session_state.scores[cid] = [0, 0]
+            st.rerun()
+
+        st.divider()
+
+        # -------------------------
+        # SCORES
+        # -------------------------
+        a = st.number_input("Score A", 0, key=f"A_{cid}")
+        b = st.number_input("Score B", 0, key=f"B_{cid}")
+
+        if st.button("✅ Submit Score", key=f"submit_{cid}"):
+            st.session_state.scores[cid] = [a, b]
             finish_match(cid)
+            st.rerun()
+
+        st.markdown('</div>', unsafe_allow_html=True)
