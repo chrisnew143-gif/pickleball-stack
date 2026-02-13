@@ -38,6 +38,11 @@ st.caption("First come • first play • fair rotation")
 # ======================================================
 def icon(skill):
     return {"BEGINNER":"🟢","NOVICE":"🟡","INTERMEDIATE":"🔴"}[skill]
+    
+ # Helper to convert number to superscript
+def superscript_number(n):
+    sup_map = str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹")
+    return str(n).translate(sup_map)
 
 def fmt(p):
     name, skill, dupr = p
