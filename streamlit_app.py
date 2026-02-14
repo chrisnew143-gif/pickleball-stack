@@ -62,49 +62,25 @@ st.markdown("""
 footer {visibility:hidden;}
 a[href*="github.com/streamlit"]{display:none!important;}
 
-/* 🎨 Premium Dark Slate Text */
+/* 🌟 Smart contrast text */
 html, body, [class*="css"]  {
-    color: #1E293B !important;
+    color: #F8FAFC !important;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.6);
 }
 
 /* Titles */
 h1, h2, h3, h4, h5, h6 {
-    color: #1E293B !important;
+    color: #FFFFFF !important;
+    text-shadow: 2px 2px 6px rgba(0,0,0,0.7);
 }
 
-/* Sidebar text */
+/* Sidebar */
 section[data-testid="stSidebar"] * {
-    color: #1E293B !important;
-}
-
-/* Labels */
-label {
-    color: #1E293B !important;
-}
-
-/* Buttons */
-button {
-    color: #1E293B !important;
-}
-
-/* Court cards */
-.court-card{
-    padding:14px;
-    border-radius:12px;
-    background:#f4f6fa;
-    margin-bottom:12px;
-    color: #1E293B !important;
-}
-
-/* Waiting box */
-.waiting-box{
-    background:#fff3cd;
-    padding:10px;
-    border-radius:10px;
-    color: #1E293B !important;
+    color: #F8FAFC !important;
 }
 </style>
 """, unsafe_allow_html=True)
+)
 
 
 # ======================================================
