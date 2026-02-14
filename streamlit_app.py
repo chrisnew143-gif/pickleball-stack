@@ -57,6 +57,56 @@ a[href*="github.com/streamlit"]{display:none!important;}
 st.title("🏓TiraDinks Pickleball Auto Stack")
 st.caption("First come • first play • fair rotation")
 
+st.markdown("""
+<style>
+footer {visibility:hidden;}
+a[href*="github.com/streamlit"]{display:none!important;}
+
+/* 🎨 Premium Dark Slate Text */
+html, body, [class*="css"]  {
+    color: #1E293B !important;
+}
+
+/* Titles */
+h1, h2, h3, h4, h5, h6 {
+    color: #1E293B !important;
+}
+
+/* Sidebar text */
+section[data-testid="stSidebar"] * {
+    color: #1E293B !important;
+}
+
+/* Labels */
+label {
+    color: #1E293B !important;
+}
+
+/* Buttons */
+button {
+    color: #1E293B !important;
+}
+
+/* Court cards */
+.court-card{
+    padding:14px;
+    border-radius:12px;
+    background:#f4f6fa;
+    margin-bottom:12px;
+    color: #1E293B !important;
+}
+
+/* Waiting box */
+.waiting-box{
+    background:#fff3cd;
+    padding:10px;
+    border-radius:10px;
+    color: #1E293B !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+
 # ======================================================
 # HELPERS
 # ======================================================
