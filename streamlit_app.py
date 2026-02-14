@@ -12,7 +12,7 @@ import base64  # ✅ ADDED
 # ======================================================
 st.set_page_config(page_title="Pickleball Auto Stack", page_icon="🎾", layout="wide")
 
-# ✅ BACKGROUND IMAGE FUNCTION ADDED
+# ✅ FIXED BACKGROUND (does NOT block UI)
 def set_background(image_file):
     with open(image_file, "rb") as img:
         encoded = base64.b64encode(img.read()).decode()
@@ -20,22 +20,32 @@ def set_background(image_file):
     st.markdown(
         f"""
         <style>
+
+        /* Background layer */
         .stApp {{
-            background: linear-gradient(
-                rgba(0,0,0,0.55),
-                rgba(0,0,0,0.55)
-            ),
-            url("data:image/jpg;base64,{encoded}");
+            background: url("data:image/jpg;base64,{encoded}") no-repeat center center fixed;
             background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
         }}
+
+        /* Dark overlay WITHOUT blocking clicks */
+        .stApp::before {{
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.45);
+            pointer-events: none;   /* ✅ THIS FIXES YOUR SETTINGS BUTTON */
+            z-index: 0;
+        }}
+
         </style>
         """,
         unsafe_allow_html=True
     )
 
-set_background("TDphoto.jpg")  # ✅ CALL FUNCTION
+set_background("TDphoto.jpg")
 
 st.markdown("""
 <style>
