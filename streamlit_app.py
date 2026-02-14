@@ -5,11 +5,35 @@ import pandas as pd
 from itertools import combinations
 import json
 import os
+import base64
 
 # ======================================================
 # PAGE CONFIG
 # ======================================================
-st.set_page_config(page_title="Pickleball Auto Stack", page_icon="🎾", layout="wide")
+st.set_page_config(page_title="TiraDinks Pickleball Auto Stack", page_icon="🏓", layout="wide")
+
+# ✅ BACKGROUND IMAGE FUNCTION ADDED
+def set_background(image_file):
+    with open(image_file, "rb") as img:
+        encoded = base64.b64encode(img.read()).decode()
+
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: url("data:image/jpg;base64,{encoded}");
+            background-size: contain;   /* ✅ Show full image */
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            background-color: #000000;  /* Optional: fills empty space */
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+set_background("TDphoto.jpg")
 
 st.markdown("""
 <style>
@@ -30,7 +54,7 @@ a[href*="github.com/streamlit"]{display:none!important;}
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🎾 Pickleball Auto Stack")
+st.title("🏓TiraDinks Pickleball Auto Stack")
 st.caption("First come • first play • fair rotation")
 
 # ======================================================
