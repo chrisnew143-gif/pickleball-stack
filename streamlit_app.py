@@ -21,21 +21,19 @@ def set_background(image_file):
         f"""
         <style>
         .stApp {{
-            background: linear-gradient(
-                rgba(0,0,0,0.55),
-                rgba(0,0,0,0.55)
-            ),
-            url("data:image/jpg;base64,{encoded}");
-            background-size: cover;
+            background-image: url("data:image/jpg;base64,{encoded}");
+            background-size: contain;   /* ✅ Show full image */
             background-position: center;
+            background-repeat: no-repeat;
             background-attachment: fixed;
+            background-color: #000000;  /* Optional: fills empty space */
         }}
         </style>
         """,
         unsafe_allow_html=True
     )
 
-set_background("TDphoto.jpg")  # ✅ CALL FUNCTION
+set_background("TDphoto.jpg")
 
 st.markdown("""
 <style>
