@@ -366,3 +366,45 @@ for i, cid in enumerate(st.session_state.courts):
             st.rerun()
 
         st.markdown('</div>', unsafe_allow_html=True)
+
+        # -------------------------
+        # 🔁 SWAP PLAYER (Court ↔ Queue)
+        # -------------------------
+        st.divider()
+        st.markdown("**🔁 Swap Player**")
+
+        flat_court = teams[0] + teams[1]
+        queue_list = list(st.session_state.queue)
+
+        if flat_court and queue_list:
+
+            swap_from_court = st.selectbox(
+                "Player OUT (from court)",
+                [p[0] for p in flat_court],
+                key=f"swap_out_{cid}"
+            )
+
+            swap_from_queue = st.selectbox(
+                "Player IN (from waiting)",
+                [p[0] for p in queue_list],
+                key=f"swap_in_{cid}"
+            )
+
+            if st.button("🔄 Swap Players", key=f"swap_btn_{cid}"):
+
+                # Find indexes
+                court_index = next(i for i, p in enumerate(flat_court) if p[0] == swap_from_court)
+                queue_index = next(i for i, p in enumerate(queue_list) if p[0] == swap_from_queue)
+
+                # Swap
+                flat_court[court_index], queue_list[queue_index] = \
+                    queue_list[queue_index], flat_court[court_index]
+
+                # Rebuild teams
+                st.session_state.courts[cid] = [flat_court[:2], flat_court[2:]]
+
+                # Rebuild queue
+                st.session_state.queue = deque(queue_list)
+
+                st.rerun()
+
