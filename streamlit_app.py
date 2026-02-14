@@ -39,14 +39,10 @@ st.caption("First come • first play • fair rotation")
 def icon(skill):
     return {"BEGINNER":"🟢","NOVICE":"🟡","INTERMEDIATE":"🔴"}[skill]
 
-def superscript_number(n):
-    sup_map = str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹")
-    return str(n).translate(sup_map)
-
 def fmt(p):
     name, skill, dupr = p
     games = st.session_state.players.get(name, {}).get("games", 0)
-    return f"{icon(skill)} {superscript_number(games)} {name}"
+    return f"{icon(skill)} {games} {name}"
 
 def safe_group(players):
     skills = {p[1] for p in players}
@@ -118,6 +114,8 @@ def start_match(cid):
 
 def finish_match(cid):
     teams = st.session_state.courts[cid]
+    if not teams:
+        return
     scoreA, scoreB = st.session_state.scores[cid]
     teamA, teamB = teams
 
@@ -234,7 +232,6 @@ def delete_profile(name):
 # ======================================================
 with st.sidebar:
     st.header("⚙ Setup")
-
     st.session_state.court_count = st.selectbox("Courts", [2,3,4,5,6], index=st.session_state.court_count-2)
 
     # Add player
@@ -267,7 +264,6 @@ with st.sidebar:
         st.rerun()
 
     st.divider()
-
     # Download CSV
     st.download_button("📥 Matches CSV", matches_csv(), "matches.csv")
     st.download_button("📥 Players CSV", players_csv(), "players.csv")
@@ -305,64 +301,63 @@ if not st.session_state.started:
     st.stop()
 
 # ======================================================
-# COURTS (FULL REWRITE)
+# COURTS
 # ======================================================
 st.divider()
 st.subheader("🏟 Live Courts")
-
 cols = st.columns(2)
 
 for i, cid in enumerate(st.session_state.courts):
-
     with cols[i % 2]:
-
         st.markdown('<div class="court-card">', unsafe_allow_html=True)
         st.markdown(f"### Court {cid}")
-
         teams = st.session_state.courts[cid]
 
-        # -------------------------
         # EMPTY COURT
-        # -------------------------
         if not teams:
             st.info("Waiting for safe players...")
             st.markdown('</div>', unsafe_allow_html=True)
             continue
 
-        # -------------------------
         # SHOW TEAMS
-        # -------------------------
         st.write("**Team A**  \n" + " & ".join(fmt(p) for p in teams[0]))
         st.write("**Team B**  \n" + " & ".join(fmt(p) for p in teams[1]))
 
-        # -------------------------
-        # CONTROL BUTTONS
-        # -------------------------
-        c1, c2 = st.columns(2)
-
-        # 🔀 Shuffle all 4 players (BEST OPTION)
-        if c1.button("🔀 Shuffle Teams", key=f"shuffle_{cid}"):
-            players = teams[0] + teams[1]
-            random.shuffle(players)
-            st.session_state.courts[cid] = [players[:2], players[2:]]
-            st.rerun()
-
-        # 🔁 Rematch same teams (reset scores only)
-        if c2.button("🔁 Rematch", key=f"rematch_{cid}"):
-            st.session_state.scores[cid] = [0, 0]
-            st.rerun()
-
         st.divider()
 
-        # -------------------------
         # SCORES
-        # -------------------------
-        a = st.number_input("Score A", 0, key=f"A_{cid}")
-        b = st.number_input("Score B", 0, key=f"B_{cid}")
-
+        a, b = st.session_state.scores[cid]
+        a = st.number_input("Score A", 0, key=f"A_{cid}", value=a)
+        b = st.number_input("Score B", 0, key=f"B_{cid}", value=b)
         if st.button("✅ Submit Score", key=f"submit_{cid}"):
             st.session_state.scores[cid] = [a, b]
             finish_match(cid)
             st.rerun()
+
+        # -------------------------
+        # SWAP PLAYER WITH WAITING QUEUE
+        # -------------------------
+        all_players = st.session_state.queue
+        flat_court = teams[0] + teams[1]
+        st.markdown("**Swap Player**")
+        if flat_court and all_players:
+            swap_from_court = st.selectbox(f"Select player in court {cid}", [p[0] for p in flat_court], key=f"swap_from_{cid}")
+            swap_from_queue = st.selectbox(f"Select player from waiting queue", [p[0] for p in all_players], key=f"swap_to_{cid}")
+            if st.button("🔄 Swap", key=f"swap_btn_{cid}"):
+                # Find indices
+                for idx, p in enumerate(flat_court):
+                    if p[0] == swap_from_court:
+                        court_idx = idx
+                        break
+                for idx, p in enumerate(all_players):
+                    if p[0] == swap_from_queue:
+                        queue_idx = idx
+                        break
+                # Swap
+                flat_court[court_idx], all_players[queue_idx] = all_players[queue_idx], flat_court[court_idx]
+                # Reassign teams
+                st.session_state.courts[cid] = [flat_court[:2], flat_court[2:]]
+                st.session_state.queue = deque(all_players)
+                st.rerun()
 
         st.markdown('</div>', unsafe_allow_html=True)
