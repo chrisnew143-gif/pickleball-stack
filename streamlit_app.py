@@ -5,85 +5,11 @@ import pandas as pd
 from itertools import combinations
 import json
 import os
-import base64
 
 # ======================================================
 # PAGE CONFIG
 # ======================================================
-st.set_page_config(page_title="TiraDinks Pickleball Auto Stack", page_icon="🏓", layout="wide")
-
-# ✅ BACKGROUND IMAGE FUNCTION ADDED
-def set_background(image_file):
-    with open(image_file, "rb") as img:
-        encoded = base64.b64encode(img.read()).decode()
-
-    st.markdown(
-        f"""
-        <style>
-        .stApp {{
-            background-image: url("data:image/jpg;base64,{encoded}");
-            background-size: contain;   /* ✅ Show full image */
-            background-position: center;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-            background-color: #000000;  /* Optional: fills empty space */
-        }}
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
-set_background("TDphoto.jpg")
-
-st.markdown("""
-<style>
-footer {visibility:hidden;}
-a[href*="github.com/streamlit"]{display:none!important;}
-
-/* 🎨 Premium Dark Slate Text */
-html, body, [class*="css"]  {
-    color: #1E293B !important;
-}
-
-/* Titles */
-h1, h2, h3, h4, h5, h6 {
-    color: #1E293B !important;
-}
-
-/* Sidebar text */
-section[data-testid="stSidebar"] * {
-    color: #1E293B !important;
-}
-
-/* Labels */
-label {
-    color: #1E293B !important;
-}
-
-/* Buttons */
-button {
-    color: #1E293B !important;
-}
-
-/* Court cards */
-.court-card{
-    padding:14px;
-    border-radius:12px;
-    background:#f4f6fa;
-    margin-bottom:12px;
-    color: #1E293B !important;
-}
-
-/* Waiting box */
-.waiting-box{
-    background:#fff3cd;
-    padding:10px;
-    border-radius:10px;
-    color: #1E293B !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
+st.set_page_config(page_title="Pickleball Auto Stack", page_icon="🎾", layout="wide")
 
 st.markdown("""
 <style>
@@ -104,7 +30,7 @@ a[href*="github.com/streamlit"]{display:none!important;}
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🏓TiraDinks Pickleball Auto Stack")
+st.title("🎾 Pickleball Auto Stack")
 st.caption("First come • first play • fair rotation")
 
 # ======================================================
