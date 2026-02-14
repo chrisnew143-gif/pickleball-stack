@@ -57,32 +57,6 @@ a[href*="github.com/streamlit"]{display:none!important;}
 st.title("🏓TiraDinks Pickleball Auto Stack")
 st.caption("First come • first play • fair rotation")
 
-st.markdown("""
-<style>
-footer {visibility:hidden;}
-a[href*="github.com/streamlit"]{display:none!important;}
-
-/* 🌟 Smart contrast text */
-html, body, [class*="css"]  {
-    color: #F8FAFC !important;
-    text-shadow: 1px 1px 3px rgba(0,0,0,0.6);
-}
-
-/* Titles */
-h1, h2, h3, h4, h5, h6 {
-    color: #FFFFFF !important;
-    text-shadow: 2px 2px 6px rgba(0,0,0,0.7);
-}
-
-/* Sidebar */
-section[data-testid="stSidebar"] * {
-    color: #F8FAFC !important;
-}
-</style>
-""", unsafe_allow_html=True)
-)
-
-
 # ======================================================
 # HELPERS
 # ======================================================
