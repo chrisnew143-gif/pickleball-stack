@@ -234,6 +234,7 @@ def delete_profile(name):
 # ======================================================
 with st.sidebar:
     st.header("⚙ Setup")
+
     st.session_state.court_count = st.selectbox("Courts", [2,3,4,5,6], index=st.session_state.court_count-2)
 
     # Add player
@@ -266,6 +267,7 @@ with st.sidebar:
         st.rerun()
 
     st.divider()
+
     # Download CSV
     st.download_button("📥 Matches CSV", matches_csv(), "matches.csv")
     st.download_button("📥 Players CSV", players_csv(), "players.csv")
@@ -303,55 +305,61 @@ if not st.session_state.started:
     st.stop()
 
 # ======================================================
-# COURTS
+# COURTS (FULL REWRITE)
 # ======================================================
 st.divider()
 st.subheader("🏟 Live Courts")
+
 cols = st.columns(2)
 
 for i, cid in enumerate(st.session_state.courts):
+
     with cols[i % 2]:
+
         st.markdown('<div class="court-card">', unsafe_allow_html=True)
         st.markdown(f"### Court {cid}")
+
         teams = st.session_state.courts[cid]
 
+        # -------------------------
+        # EMPTY COURT
+        # -------------------------
         if not teams:
             st.info("Waiting for safe players...")
             st.markdown('</div>', unsafe_allow_html=True)
             continue
 
-        # Swap helper: options for dropdown (waiting queue + current player)
-        queue_options = [p[0] for p in st.session_state.queue]
+        # -------------------------
+        # SHOW TEAMS
+        # -------------------------
+        st.write("**Team A**  \n" + " & ".join(fmt(p) for p in teams[0]))
+        st.write("**Team B**  \n" + " & ".join(fmt(p) for p in teams[1]))
 
-        # Show Team A
-        for j, player in enumerate(teams[0]):
-            options = [player[0]] + queue_options
-            sel = st.selectbox(f"Team A Player {j+1}", options, index=0, key=f"A_{cid}_{j}")
-            if sel != player[0]:
-                # Swap in queue
-                old = player
-                new_player = next(p for p in st.session_state.queue if p[0]==sel)
-                teams[0][j] = new_player
-                st.session_state.queue.remove(new_player)
-                st.session_state.queue.append(old)
-                st.rerun()
+        # -------------------------
+        # CONTROL BUTTONS
+        # -------------------------
+        c1, c2 = st.columns(2)
 
-        # Show Team B
-        for j, player in enumerate(teams[1]):
-            options = [player[0]] + queue_options
-            sel = st.selectbox(f"Team B Player {j+1}", options, index=0, key=f"B_{cid}_{j}")
-            if sel != player[0]:
-                old = player
-                new_player = next(p for p in st.session_state.queue if p[0]==sel)
-                teams[1][j] = new_player
-                st.session_state.queue.remove(new_player)
-                st.session_state.queue.append(old)
-                st.rerun()
+        # 🔀 Shuffle all 4 players (BEST OPTION)
+        if c1.button("🔀 Shuffle Teams", key=f"shuffle_{cid}"):
+            players = teams[0] + teams[1]
+            random.shuffle(players)
+            st.session_state.courts[cid] = [players[:2], players[2:]]
+            st.rerun()
+
+        # 🔁 Rematch same teams (reset scores only)
+        if c2.button("🔁 Rematch", key=f"rematch_{cid}"):
+            st.session_state.scores[cid] = [0, 0]
+            st.rerun()
 
         st.divider()
-        # Scores
-        a = st.number_input("Score A", 0, key=f"A_score_{cid}")
-        b = st.number_input("Score B", 0, key=f"B_score_{cid}")
+
+        # -------------------------
+        # SCORES
+        # -------------------------
+        a = st.number_input("Score A", 0, key=f"A_{cid}")
+        b = st.number_input("Score B", 0, key=f"B_{cid}")
+
         if st.button("✅ Submit Score", key=f"submit_{cid}"):
             st.session_state.scores[cid] = [a, b]
             finish_match(cid)
