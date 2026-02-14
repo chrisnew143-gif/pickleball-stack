@@ -10,7 +10,7 @@ import base64
 # ======================================================
 # PAGE CONFIG
 # ======================================================
-st.set_page_config(page_title="Pickleball Auto Stack", page_icon="🎾", layout="wide")
+st.set_page_config(page_title="TiraDinks Pickleball Auto Stack", page_icon="🏓", layout="wide")
 
 # ✅ BACKGROUND IMAGE FUNCTION ADDED
 def set_background(image_file):
@@ -56,7 +56,7 @@ a[href*="github.com/streamlit"]{display:none!important;}
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🎾 Pickleball Auto Stack")
+st.title("🏓TiraDinks Pickleball Auto Stack")
 st.caption("First come • first play • fair rotation")
 
 # ======================================================
