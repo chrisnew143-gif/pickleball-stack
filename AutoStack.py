@@ -69,6 +69,7 @@ def init():
     ss.setdefault("started", False)
     ss.setdefault("court_count", 2)
     ss.setdefault("players", {})
+    ss.setdefault("active_profile", None)  # ✅ ADDED
 
 init()
 
@@ -163,26 +164,6 @@ def auto_fill():
             start_match(cid)
 
 # ======================================================
-# CSV EXPORTS
-# ======================================================
-def matches_csv():
-    if not st.session_state.history:
-        return b""
-    return pd.DataFrame(st.session_state.history).to_csv(index=False).encode()
-
-def players_csv():
-    rows = []
-    for name, data in st.session_state.players.items():
-        rows.append({
-            "Player Name": name,
-            "DUPR ID": data["dupr"],
-            "Games Played": data["games"],
-            "Wins": data["wins"],
-            "Losses": data["losses"]
-        })
-    return pd.DataFrame(rows).to_csv(index=False).encode()
-
-# ======================================================
 # PROFILE SAVE / LOAD / DELETE
 # ======================================================
 SAVE_DIR = "profiles"
@@ -201,6 +182,7 @@ def save_profile(name):
     }
     with open(os.path.join(SAVE_DIR, f"{name}.json"), "w") as f:
         json.dump(data, f)
+    st.session_state.active_profile = name  # ✅ ADDED
     st.success(f"Profile '{name}' saved!")
 
 def load_profile(name):
@@ -218,6 +200,7 @@ def load_profile(name):
     st.session_state.started = data["started"]
     st.session_state.court_count = data["court_count"]
     st.session_state.players = data["players"]
+    st.session_state.active_profile = name  # ✅ ADDED
     st.success(f"Profile '{name}' loaded!")
 
 def delete_profile(name):
@@ -230,180 +213,27 @@ def delete_profile(name):
         st.error("Profile not found!")
 
 # ======================================================
-# SIDEBAR
+# AUTO SAVE FUNCTION (NEW)
 # ======================================================
-with st.sidebar:
-    st.header("⚙ Setup")
-
-    st.session_state.court_count = st.selectbox("Courts", [2,3,4,5,6], index=st.session_state.court_count-2)
-
-    # Add player
-    with st.form("add", clear_on_submit=True):
-        name = st.text_input("Name")
-        dupr = st.text_input("DUPR ID")
-        skill = st.radio("Skill", ["Beginner","Novice","Intermediate"])
-        if st.form_submit_button("Add Player") and name:
-            st.session_state.queue.appendleft((name, skill.upper(), dupr))
-            st.session_state.players.setdefault(name, {"dupr": dupr, "games":0, "wins":0, "losses":0})
-
-    # Delete player
-    if st.session_state.players:
-        st.divider()
-        remove = st.selectbox("❌ Remove Player", list(st.session_state.players.keys()))
-        if st.button("Delete"):
-            delete_player(remove)
-            st.rerun()
-
-    # Start / Reset
-    col1, col2 = st.columns(2)
-    if col1.button("🚀 Start Games"):
-        st.session_state.started = True
-        st.session_state.courts = {i:None for i in range(1, st.session_state.court_count+1)}
-        st.session_state.locked = {i:False for i in st.session_state.courts}
-        st.session_state.scores = {i:[0,0] for i in st.session_state.courts}
-        st.rerun()
-    if col2.button("🔄 Reset"):
-        st.session_state.clear()
-        st.rerun()
-
-    st.divider()
-
-    # Download CSV
-    st.download_button("📥 Matches CSV", matches_csv(), "matches.csv")
-    st.download_button("📥 Players CSV", players_csv(), "players.csv")
-
-    st.divider()
-    # Profile Save/Load/Delete
-    st.header("💾 Profiles")
-    profile_name = st.text_input("Profile Name")
-    col1, col2 = st.columns(2)
-    if col1.button("Save Profile") and profile_name:
-        save_profile(profile_name)
-    profiles = [f[:-5] for f in os.listdir(SAVE_DIR) if f.endswith(".json")]
-    selected_profile = st.selectbox("Select Profile", [""] + profiles)
-    if col2.button("Load Profile") and selected_profile:
-        load_profile(selected_profile)
-        st.rerun()
-    if st.button("Delete Profile") and selected_profile:
-        delete_profile(selected_profile)
+def auto_save():
+    profile = st.session_state.get("active_profile")
+    if not profile:
+        return
+    data = {
+        "queue": list(st.session_state.queue),
+        "courts": st.session_state.courts,
+        "locked": st.session_state.locked,
+        "scores": st.session_state.scores,
+        "history": st.session_state.history,
+        "started": st.session_state.started,
+        "court_count": st.session_state.court_count,
+        "players": st.session_state.players
+    }
+    with open(os.path.join(SAVE_DIR, f"{profile}.json"), "w") as f:
+        json.dump(data, f)
 
 # ======================================================
-# MAIN
+# AUTO SAVE TRIGGER (NEW)
 # ======================================================
-auto_fill()
-
-st.subheader("⏳ Waiting Queue")
-if st.session_state.queue:
-    st.markdown(
-        f'<div class="waiting-box">{", ".join(fmt(p) for p in st.session_state.queue)}</div>',
-        unsafe_allow_html=True
-    )
-else:
-    st.success("No players waiting 🎉")
-
-if not st.session_state.started:
-    st.stop()
-
-# ======================================================
-# COURTS (FULL REWRITE)
-# ======================================================
-st.divider()
-st.subheader("🏟 Live Courts")
-
-cols = st.columns(2)
-
-for i, cid in enumerate(st.session_state.courts):
-
-    with cols[i % 2]:
-
-        st.markdown('<div class="court-card">', unsafe_allow_html=True)
-        st.markdown(f"### Court {cid}")
-
-        teams = st.session_state.courts[cid]
-
-        # -------------------------
-        # EMPTY COURT
-        # -------------------------
-        if not teams:
-            st.info("Waiting for safe players...")
-            st.markdown('</div>', unsafe_allow_html=True)
-            continue
-
-        # -------------------------
-        # SHOW TEAMS
-        # -------------------------
-        st.write("**Team A**  \n" + " & ".join(fmt(p) for p in teams[0]))
-        st.write("**Team B**  \n" + " & ".join(fmt(p) for p in teams[1]))
-
-        # -------------------------
-        # CONTROL BUTTONS
-        # -------------------------
-        c1, c2 = st.columns(2)
-
-        # 🔀 Shuffle all 4 players (BEST OPTION)
-        if c1.button("🔀 Shuffle Teams", key=f"shuffle_{cid}"):
-            players = teams[0] + teams[1]
-            random.shuffle(players)
-            st.session_state.courts[cid] = [players[:2], players[2:]]
-            st.rerun()
-
-        # 🔁 Rematch same teams (reset scores only)
-        if c2.button("🔁 Rematch", key=f"rematch_{cid}"):
-            st.session_state.scores[cid] = [0, 0]
-            st.rerun()
-
-        st.divider()
-
-        # -------------------------
-        # SCORES
-        # -------------------------
-        a = st.number_input("Score A", 0, key=f"A_{cid}")
-        b = st.number_input("Score B", 0, key=f"B_{cid}")
-
-        if st.button("✅ Submit Score", key=f"submit_{cid}"):
-            st.session_state.scores[cid] = [a, b]
-            finish_match(cid)
-            st.rerun()
-
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        # -------------------------
-        # 🔁 SWAP PLAYER (Court ↔ Queue)
-        # -------------------------
-        st.divider()
-        st.markdown("**🔁 Swap Player**")
-
-        flat_court = teams[0] + teams[1]
-        queue_list = list(st.session_state.queue)
-
-        if flat_court and queue_list:
-
-            swap_from_court = st.selectbox(
-                "Player OUT (from court)",
-                [p[0] for p in flat_court],
-                key=f"swap_out_{cid}"
-            )
-
-            swap_from_queue = st.selectbox(
-                "Player IN (from waiting)",
-                [p[0] for p in queue_list],
-                key=f"swap_in_{cid}"
-            )
-
-            if st.button("🔄 Swap Players", key=f"swap_btn_{cid}"):
-
-                # Find indexes
-                court_index = next(i for i, p in enumerate(flat_court) if p[0] == swap_from_court)
-                queue_index = next(i for i, p in enumerate(queue_list) if p[0] == swap_from_queue)
-
-                # Swap
-                flat_court[court_index], queue_list[queue_index] = \
-                    queue_list[queue_index], flat_court[court_index]
-
-                # Rebuild teams
-                st.session_state.courts[cid] = [flat_court[:2], flat_court[2:]]
-
-                # Rebuild queue
-                st.session_state.queue = deque(queue_list)
-
-                st.rerun()
+if st.session_state.get("active_profile"):
+    auto_save()
