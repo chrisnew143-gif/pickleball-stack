@@ -20,20 +20,23 @@ if st.session_state.page == "home":
 
     st.title("🎾 Pickleball Stack System")
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
 
-    if col1.button("🏟 Organizer (AutoStack)", use_container_width=True):
+    if col1.button("🏟 Open Play(Stacking)", use_container_width=True):
         go("autostack")
 
-    if col2.button("👤 Player Join", use_container_width=True):
+    if col2.button("👤 Tournament Matches", use_container_width=True):
         go("player")
 
-    if col3.button("🏢 Clubs", use_container_width=True):
+    if col3.button("🏢 DUPR Matches", use_container_width=True):
+        go("registerclub")
+
+    if col4.button("🏢 InterClub Matches", use_container_width=True):
         go("registerclub")
 
 
 # =========================
-# AUTOSTACK
+# Open Play
 # =========================
 elif st.session_state.page == "autostack":
 
@@ -44,18 +47,20 @@ elif st.session_state.page == "autostack":
 
 
 # =========================
-# PLAYER
+# Tournament Matches
 # =========================
 elif st.session_state.page == "player":
 
     if st.button("⬅ Back to Home"):
         go("home")
 
-    import PlayerJoin   # your module
+    st.markdown("## 🚧 Under Construction 🚧")
+    st.info("feature coming soon!")
+
 
 
 # =========================
-# REGISTER CLUB (placeholder)
+# DUPR Matches
 # =========================
 elif st.session_state.page == "registerclub":
 
@@ -63,4 +68,15 @@ elif st.session_state.page == "registerclub":
         go("home")
 
     st.markdown("## 🚧 Under Construction 🚧")
-    st.info("Club registration feature coming soon!")
+    st.info("feature coming soon!")
+
+# =========================
+# InterClub Matches
+# =========================
+elif st.session_state.page == "registerclub":
+
+    if st.button("⬅ Back to Home"):
+        go("home")
+
+    st.markdown("## 🚧 Under Construction 🚧")
+    st.info("feature coming soon!")
