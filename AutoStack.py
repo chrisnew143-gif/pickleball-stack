@@ -69,6 +69,7 @@ def init():
     ss.setdefault("started", False)
     ss.setdefault("court_count", 2)
     ss.setdefault("players", {})
+        ss.setdefault("active_profile", None)   # 👈 ADD THIS
 
 init()
 
@@ -199,17 +200,43 @@ def save_profile(name):
         "court_count": st.session_state.court_count,
         "players": st.session_state.players
     }
+
     with open(os.path.join(SAVE_DIR, f"{name}.json"), "w") as f:
         json.dump(data, f)
+
+    st.session_state.active_profile = name  # 👈 IMPORTANT
     st.success(f"Profile '{name}' saved!")
+
+
+def auto_save():
+    profile = st.session_state.get("active_profile")
+    if not profile:
+        return  # no active profile yet
+
+    data = {
+        "queue": list(st.session_state.queue),
+        "courts": st.session_state.courts,
+        "locked": st.session_state.locked,
+        "scores": st.session_state.scores,
+        "history": st.session_state.history,
+        "started": st.session_state.started,
+        "court_count": st.session_state.court_count,
+        "players": st.session_state.players
+    }
+
+    with open(os.path.join(SAVE_DIR, f"{profile}.json"), "w") as f:
+        json.dump(data, f)
+
 
 def load_profile(name):
     path = os.path.join(SAVE_DIR, f"{name}.json")
     if not os.path.exists(path):
         st.error("Profile not found!")
         return
+
     with open(path, "r") as f:
         data = json.load(f)
+
     st.session_state.queue = deque(data["queue"])
     st.session_state.courts = data["courts"]
     st.session_state.locked = data["locked"]
@@ -218,7 +245,10 @@ def load_profile(name):
     st.session_state.started = data["started"]
     st.session_state.court_count = data["court_count"]
     st.session_state.players = data["players"]
+
+    st.session_state.active_profile = name  # 👈 IMPORTANT
     st.success(f"Profile '{name}' loaded!")
+
 
 def delete_profile(name):
     path = os.path.join(SAVE_DIR, f"{name}.json")
@@ -407,3 +437,13 @@ for i, cid in enumerate(st.session_state.courts):
                 st.session_state.queue = deque(queue_list)
 
                 st.rerun()
+                
+        # ======================================================
+        # AUTO SAVE TRIGGER
+        # ======================================================
+        if st.session_state.get("active_profile"):
+        auto_save()
+
+
+
+
