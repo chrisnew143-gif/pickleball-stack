@@ -215,7 +215,7 @@ SAVE_DIR = "profiles"
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 def save_profile(name):
-    # Convert datetime objects to strings for JSON
+    # Convert datetime objects to strings
     match_start_time_str = {str(k): v.strftime("%Y-%m-%d %H:%M:%S") 
                             for k, v in st.session_state.match_start_time.items()}
 
@@ -241,7 +241,7 @@ def load_profile(name):
         return
     with open(path, "r") as f:
         data = json.load(f)
-    
+
     st.session_state.queue = deque(data["queue"])
     st.session_state.courts = data["courts"]
     st.session_state.locked = data["locked"]
@@ -251,18 +251,15 @@ def load_profile(name):
     st.session_state.court_count = data["court_count"]
     st.session_state.players = data["players"]
 
-    # Restore match_start_time as datetime objects
-    st.session_state.match_start_time = {
-        int(k): datetime.strptime(v, "%Y-%m-%d %H:%M:%S") 
-        for k, v in data.get("match_start_time", {}).items()
-    }
+    # Restore match_start_time exactly as saved
+    st.session_state.match_start_time = {}
+    for k, v in data.get("match_start_time", {}).items():
+        try:
+            st.session_state.match_start_time[int(k)] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
+        except Exception:
+            # fallback if string parsing fails
+            st.session_state.match_start_time[int(k)] = datetime.now()
 
-    # Ensure all active courts have a start_time
-    for cid, teams in st.session_state.courts.items():
-        if teams and cid not in st.session_state.match_start_time:
-            st.session_state.match_start_time[cid] = datetime.now()
-    
-    st.success(f"Profile '{name}' loaded!")
 
 
 def delete_profile(name):
