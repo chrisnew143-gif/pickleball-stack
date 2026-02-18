@@ -5,6 +5,8 @@ import pandas as pd
 from itertools import combinations
 import json
 import os
+from datetime import datetime
+
 
 # ======================================================
 # PAGE CONFIG
@@ -69,6 +71,7 @@ def init():
     ss.setdefault("started", False)
     ss.setdefault("court_count", 2)
     ss.setdefault("players", {})
+    ss.setdefault("match_start_time", {})
 
 init()
 
@@ -115,6 +118,10 @@ def start_match(cid):
     st.session_state.courts[cid] = make_teams(players)
     st.session_state.locked[cid] = True
     st.session_state.scores[cid] = [0, 0]
+    
+    st.session_state.match_start_time[cid] = datetime.now()
+
+
 
 def finish_match(cid):
     teams = st.session_state.courts[cid]
@@ -138,6 +145,18 @@ def finish_match(cid):
     for p in losers:
         st.session_state.players[p[0]]["losses"] += 1
 
+    end_time = datetime.now()
+    start_time = st.session_state.match_start_time.get(cid)
+
+    if start_time:
+        duration = round((end_time - start_time).total_seconds() / 60, 2)
+        start_str = start_time.strftime("%H:%M:%S")
+        end_str = end_time.strftime("%H:%M:%S")
+    else:
+        duration = 0
+        start_str = ""
+        end_str = ""
+
     st.session_state.history.append({
         "Court": cid,
         "Team A": " & ".join(p[0] for p in teamA),
@@ -145,7 +164,13 @@ def finish_match(cid):
         "Score A": scoreA,
         "Score B": scoreB,
         "Winner": winner
+        "Start Time": start_str,
+        "End Time": end_str,
+        "Duration (Minutes)": duration
     })
+
+    # Clear start time
+    st.session_state.match_start_time.pop(cid, None)
 
     players = teamA + teamB
     random.shuffle(players)
