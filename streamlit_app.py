@@ -343,6 +343,14 @@ for i, cid in enumerate(st.session_state.courts):
 
         st.markdown('<div class="court-card">', unsafe_allow_html=True)
         st.markdown(f"### Court {cid}")
+        # ⏱ Show match start time
+start_time = st.session_state.match_start_time.get(cid)
+if start_time:
+    st.caption(f"⏱ Started at: {start_time.strftime('%H:%M:%S')}")
+    
+if start_time:
+    running_minutes = round((datetime.now() - start_time).total_seconds() / 60, 2)
+    st.caption(f"⏳ Running: {running_minutes} minutes")
 
         teams = st.session_state.courts[cid]
 
