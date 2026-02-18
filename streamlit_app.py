@@ -353,43 +353,46 @@ if not st.session_state.started:
 st.divider()
 st.subheader("🏟 Live Courts")
 
-# 🔁 Auto refresh every 1 second for live timer
 st_autorefresh(interval=1000, key="live_timer")
 
 # ================= UI STYLE =================
 st.markdown("""
 <style>
 .court-card{
-    padding:20px;
-    border-radius:16px;
+    padding:18px;
+    border-radius:14px;
     background:#f8f9fc;
-    margin-bottom:20px;
-    box-shadow:0 6px 16px rgba(0,0,0,0.05);
+    margin-bottom:18px;
+    box-shadow:0 4px 10px rgba(0,0,0,0.05);
 }
+
 .court-title{
-    font-size:20px;
+    font-size:18px;
     font-weight:600;
     margin-bottom:6px;
 }
+
 .timer-text{
-    font-size:15px;
-    color:#444;
-    margin-bottom:12px;
-}
-.team-title{
     font-size:14px;
+    color:#444;
+    margin-bottom:10px;
+}
+
+.team-title{
+    font-size:13px;
     font-weight:600;
     margin-bottom:4px;
 }
+
 .team-text{
-    font-size:14px;
+    font-size:13px;
     line-height:1.4;
 }
-.score-box{
-    font-size:20px;
-    font-weight:600;
-    text-align:center;
-    padding-top:20px;
+
+.small-btn button{
+    font-size:12px !important;
+    padding:4px 8px !important;
+    border-radius:6px !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -431,22 +434,14 @@ for i, cid in enumerate(st.session_state.courts):
             continue
 
         # -------------------------
-        # TEAMS + SCORE (SIDE BY SIDE)
+        # TEAMS SIDE BY SIDE
         # -------------------------
-        colA, colMid, colB = st.columns([3,1.5,3])
+        colA, colB = st.columns(2)
 
         with colA:
             st.markdown('<div class="team-title">Team A</div>', unsafe_allow_html=True)
             st.markdown(
                 f'<div class="team-text">{"<br>".join(fmt(p) for p in teams[0])}</div>',
-                unsafe_allow_html=True
-            )
-
-        with colMid:
-            scoreA = st.session_state.scores[cid][0]
-            scoreB = st.session_state.scores[cid][1]
-            st.markdown(
-                f'<div class="score-box">{scoreA} - {scoreB}</div>',
                 unsafe_allow_html=True
             )
 
@@ -460,39 +455,47 @@ for i, cid in enumerate(st.session_state.courts):
         st.divider()
 
         # -------------------------
-        # SCORE INPUT + SUBMIT (COMPACT ROW)
+        # SCORE INPUT (SMALL)
         # -------------------------
-        c1, c2, c3 = st.columns([2,2,3])
+        s1, s2, s3 = st.columns([1,1,2])
 
-        with c1:
+        with s1:
             a = st.number_input("A", 0, key=f"A_{cid}")
 
-        with c2:
+        with s2:
             b = st.number_input("B", 0, key=f"B_{cid}")
 
-        with c3:
-            if st.button("✅ Submit", key=f"submit_{cid}", use_container_width=True):
+        with s3:
+            st.markdown('<div class="small-btn">', unsafe_allow_html=True)
+            if st.button("Submit", key=f"submit_{cid}"):
                 st.session_state.scores[cid] = [a, b]
                 finish_match(cid)
                 st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
 
         # -------------------------
-        # CONTROL BUTTONS
+        # CONTROL BUTTONS (SMALL)
         # -------------------------
         c1, c2 = st.columns(2)
 
-        if c1.button("🔀 Shuffle", key=f"shuffle_{cid}", use_container_width=True):
-            players = teams[0] + teams[1]
-            random.shuffle(players)
-            st.session_state.courts[cid] = [players[:2], players[2:]]
-            st.rerun()
+        with c1:
+            st.markdown('<div class="small-btn">', unsafe_allow_html=True)
+            if st.button("Shuffle", key=f"shuffle_{cid}"):
+                players = teams[0] + teams[1]
+                random.shuffle(players)
+                st.session_state.courts[cid] = [players[:2], players[2:]]
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
 
-        if c2.button("🔁 Rematch", key=f"rematch_{cid}", use_container_width=True):
-            st.session_state.scores[cid] = [0, 0]
-            st.rerun()
+        with c2:
+            st.markdown('<div class="small-btn">', unsafe_allow_html=True)
+            if st.button("Rematch", key=f"rematch_{cid}"):
+                st.session_state.scores[cid] = [0, 0]
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
 
         # -------------------------
-        # SWAP (COLLAPSIBLE TO SAVE SPACE)
+        # SWAP (COMPACT)
         # -------------------------
         with st.expander("🔁 Swap Player"):
 
@@ -502,18 +505,18 @@ for i, cid in enumerate(st.session_state.courts):
             if flat_court and queue_list:
 
                 swap_from_court = st.selectbox(
-                    "Player OUT",
+                    "OUT",
                     [p[0] for p in flat_court],
                     key=f"swap_out_{cid}"
                 )
 
                 swap_from_queue = st.selectbox(
-                    "Player IN",
+                    "IN",
                     [p[0] for p in queue_list],
                     key=f"swap_in_{cid}"
                 )
 
-                if st.button("🔄 Confirm Swap", key=f"swap_btn_{cid}", use_container_width=True):
+                if st.button("Confirm Swap", key=f"swap_btn_{cid}"):
 
                     court_index = next(i for i, p in enumerate(flat_court) if p[0] == swap_from_court)
                     queue_index = next(i for i, p in enumerate(queue_list) if p[0] == swap_from_queue)
