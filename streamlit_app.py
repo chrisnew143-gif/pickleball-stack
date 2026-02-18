@@ -335,6 +335,8 @@ if not st.session_state.started:
 st.divider()
 st.subheader("🏟 Live Courts")
 
+from datetime import datetime  # make sure this is imported
+
 cols = st.columns(2)
 
 for i, cid in enumerate(st.session_state.courts):
@@ -343,14 +345,15 @@ for i, cid in enumerate(st.session_state.courts):
 
         st.markdown('<div class="court-card">', unsafe_allow_html=True)
         st.markdown(f"### Court {cid}")
-        # ⏱ Show match start time
-start_time = st.session_state.match_start_time.get(cid)
-if start_time:
-    st.caption(f"⏱ Started at: {start_time.strftime('%H:%M:%S')}")
-    
-if start_time:
-    running_minutes = round((datetime.now() - start_time).total_seconds() / 60, 2)
-    st.caption(f"⏳ Running: {running_minutes} minutes")
+
+        # ⏱ Show match start time + running time
+        start_time = st.session_state.match_start_time.get(cid)
+        if start_time:
+            st.caption(f"⏱ Started at: {start_time.strftime('%H:%M:%S')}")
+            running_minutes = round(
+                (datetime.now() - start_time).total_seconds() / 60, 2
+            )
+            st.caption(f"⏳ Running: {running_minutes} minutes")
 
         teams = st.session_state.courts[cid]
 
@@ -373,14 +376,12 @@ if start_time:
         # -------------------------
         c1, c2 = st.columns(2)
 
-        # 🔀 Shuffle all 4 players (BEST OPTION)
         if c1.button("🔀 Shuffle Teams", key=f"shuffle_{cid}"):
             players = teams[0] + teams[1]
             random.shuffle(players)
             st.session_state.courts[cid] = [players[:2], players[2:]]
             st.rerun()
 
-        # 🔁 Rematch same teams (reset scores only)
         if c2.button("🔁 Rematch", key=f"rematch_{cid}"):
             st.session_state.scores[cid] = [0, 0]
             st.rerun()
@@ -425,18 +426,13 @@ if start_time:
 
             if st.button("🔄 Swap Players", key=f"swap_btn_{cid}"):
 
-                # Find indexes
                 court_index = next(i for i, p in enumerate(flat_court) if p[0] == swap_from_court)
                 queue_index = next(i for i, p in enumerate(queue_list) if p[0] == swap_from_queue)
 
-                # Swap
                 flat_court[court_index], queue_list[queue_index] = \
                     queue_list[queue_index], flat_court[court_index]
 
-                # Rebuild teams
                 st.session_state.courts[cid] = [flat_court[:2], flat_court[2:]]
-
-                # Rebuild queue
                 st.session_state.queue = deque(queue_list)
 
                 st.rerun()
