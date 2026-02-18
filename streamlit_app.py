@@ -215,6 +215,9 @@ SAVE_DIR = "profiles"
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 def save_profile(name):
+    # Convert datetime objects to strings for JSON
+    match_start_time_str = {k: v.strftime("%Y-%m-%d %H:%M:%S") for k, v in st.session_state.match_start_time.items()}
+
     data = {
         "queue": list(st.session_state.queue),
         "courts": st.session_state.courts,
@@ -224,11 +227,12 @@ def save_profile(name):
         "started": st.session_state.started,
         "court_count": st.session_state.court_count,
         "players": st.session_state.players,
-        "match_start_time": {k: v.strftime("%Y-%m-%d %H:%M:%S") for k, v in st.session_state.match_start_time.items()}
+        "match_start_time": match_start_time_str
     }
     with open(os.path.join(SAVE_DIR, f"{name}.json"), "w") as f:
         json.dump(data, f)
     st.success(f"Profile '{name}' saved!")
+
 
 def load_profile(name):
     path = os.path.join(SAVE_DIR, f"{name}.json")
