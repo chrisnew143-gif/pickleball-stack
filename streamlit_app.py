@@ -351,15 +351,39 @@ for i, cid in enumerate(st.session_state.courts):
         # ⏱ Show match start time + running time
         start_time = st.session_state.match_start_time.get(cid)
 
-if start_time:
-    elapsed_seconds = int((datetime.now() - start_time).total_seconds())
-    minutes = elapsed_seconds // 60
-    seconds = elapsed_seconds % 60
+# ======================================================
+# COURTS
+# ======================================================
+st.divider()
+st.subheader("🏟 Live Courts")
 
-    st.caption(f"⏱ Started at: {start_time.strftime('%H:%M:%S')}")
-    st.markdown(f"### ⏳ {minutes:02d}:{seconds:02d}")
+from datetime import datetime
+from streamlit_autorefresh import st_autorefresh
 
+# 🔁 Auto refresh every 1 second
+st_autorefresh(interval=1000, key="live_timer")
 
+cols = st.columns(2)
+
+for i, cid in enumerate(st.session_state.courts):
+
+    with cols[i % 2]:
+
+        st.markdown('<div class="court-card">', unsafe_allow_html=True)
+        st.markdown(f"### Court {cid}")
+
+        # ⏱ Live Timer
+        start_time = st.session_state.match_start_time.get(cid)
+
+        if start_time:
+            elapsed_seconds = int((datetime.now() - start_time).total_seconds())
+            minutes = elapsed_seconds // 60
+            seconds = elapsed_seconds % 60
+
+            st.caption(f"⏱ Started at: {start_time.strftime('%H:%M:%S')}")
+            st.markdown(f"### ⏳ {minutes:02d}:{seconds:02d}")
+
+        # MUST align with start_time block
         teams = st.session_state.courts[cid]
 
         # -------------------------
@@ -407,7 +431,7 @@ if start_time:
         st.markdown('</div>', unsafe_allow_html=True)
 
         # -------------------------
-        # 🔁 SWAP PLAYER (Court ↔ Queue)
+        # SWAP PLAYER
         # -------------------------
         st.divider()
         st.markdown("**🔁 Swap Player**")
