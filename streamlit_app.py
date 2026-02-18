@@ -5,6 +5,7 @@ import pandas as pd
 from itertools import combinations
 import json
 import os
+from streamlit_autorefresh import st_autorefresh
 from datetime import datetime
 
 
@@ -328,6 +329,7 @@ else:
 
 if not st.session_state.started:
     st.stop()
+    st_autorefresh(interval=1000, key="live_timer")
 
 # ======================================================
 # COURTS (FULL REWRITE)
@@ -348,12 +350,15 @@ for i, cid in enumerate(st.session_state.courts):
 
         # ⏱ Show match start time + running time
         start_time = st.session_state.match_start_time.get(cid)
-        if start_time:
-            st.caption(f"⏱ Started at: {start_time.strftime('%H:%M:%S')}")
-            running_minutes = round(
-                (datetime.now() - start_time).total_seconds() / 60, 2
-            )
-            st.caption(f"⏳ Running: {running_minutes} minutes")
+
+if start_time:
+    elapsed_seconds = int((datetime.now() - start_time).total_seconds())
+    minutes = elapsed_seconds // 60
+    seconds = elapsed_seconds % 60
+
+    st.caption(f"⏱ Started at: {start_time.strftime('%H:%M:%S')}")
+    st.markdown(f"### ⏳ {minutes:02d}:{seconds:02d}")
+
 
         teams = st.session_state.courts[cid]
 
