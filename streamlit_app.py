@@ -163,7 +163,7 @@ def finish_match(cid):
         "Team B": " & ".join(p[0] for p in teamB),
         "Score A": scoreA,
         "Score B": scoreB,
-        "Winner": winner
+        "Winner": winner,
         "Start Time": start_str,
         "End Time": end_str,
         "Duration (Minutes)": duration
