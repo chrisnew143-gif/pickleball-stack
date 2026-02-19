@@ -49,7 +49,6 @@ if uploaded_file is not None:
     if st.button("🚀 Generate Matches", use_container_width=True):
 
         matches_output = []
-        bracket_sheets = {}  # dictionary to store bracket player lists
 
         # Group players by rating bracket
         bracket_groups = {}
@@ -57,9 +56,6 @@ if uploaded_file is not None:
             bracket_name = f"{low}-{high}"
             group = df[(df["Rating"] >= low) & (df["Rating"] < high)]
             bracket_groups[bracket_name] = group.to_dict("records")
-
-            # Save Names + DUPR_ID for this bracket
-            bracket_sheets[bracket_name] = pd.DataFrame(group[["Name", "DUPR_ID"]]) if not group.empty else pd.DataFrame()
 
         # Generate Matches
         for bracket, players in bracket_groups.items():
@@ -116,30 +112,24 @@ if uploaded_file is not None:
                     court_number += 1
 
         if matches_output:
-
             matches_df = pd.DataFrame(matches_output)
 
             st.success("✅ Matches Generated Successfully!")
             st.dataframe(matches_df, use_container_width=True)
 
-# ============================
-# CREATE EXCEL WITH MULTIPLE SHEETS
-# ============================
-output = BytesIO()
-with pd.ExcelWriter(output, engine="openpyxl") as writer:
-    # Matches sheet (always exists)
-    matches_df.to_excel(writer, index=False, sheet_name="Matches")
-    
-    # Bracket sheets (only if they have players)
-    for bracket_name, bracket_df in bracket_sheets.items():
-        if not bracket_df.empty:
-            bracket_df.to_excel(writer, index=False, sheet_name=f"Bracket {bracket_name}")
+            # ============================
+            # DOWNLOAD BUTTON (BytesIO)
+            # ============================
+            output = BytesIO()
+            matches_df.to_excel(output, index=False, engine="openpyxl")
+            output.seek(0)
 
-output.seek(0)
+            st.download_button(
+                label="📥 Download Matches Excel",
+                data=output,
+                file_name="DUPR_Matches.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
 
-st.download_button(
-    label="📥 Download Matches + Brackets Excel",
-    data=output,
-    file_name="DUPR_Matches.xlsx",
-    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-)
+        else:
+            st.warning("Not enough players to generate matches in the selected brackets.")
