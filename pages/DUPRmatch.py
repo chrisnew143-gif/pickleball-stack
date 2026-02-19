@@ -8,7 +8,6 @@ from io import BytesIO
 # PAGE CONFIG
 # ============================
 st.set_page_config(page_title="DUPR Match Generator", layout="wide")
-
 st.title("🏆 DUPR Match Generator")
 st.write("Upload your Excel file with columns: Name, DUPR_ID, Rating")
 
@@ -21,19 +20,21 @@ uploaded_file = st.file_uploader("Upload Players Excel File", type=["xlsx", "csv
 # CONFIG
 # ============================
 BRACKETS = [
+    (2.0, 2.5),  # NEW bracket added
     (2.5, 3.0),
     (3.0, 3.5),
     (3.5, 4.0)
 ]
 
 ROUNDS = st.number_input("Number of Rounds", min_value=1, max_value=10, value=2)
+NUM_COURTS = st.number_input("Number of Courts", min_value=1, max_value=10, value=2)
+
 
 # ============================
 # GENERATE BUTTON
 # ============================
 if uploaded_file is not None:
-
-    # Detect file type and read
+    # Read file
     if uploaded_file.name.endswith(".csv"):
         df = pd.read_csv(uploaded_file)
     else:
@@ -66,29 +67,30 @@ if uploaded_file is not None:
             partner_history = defaultdict(set)
 
             for round_number in range(1, ROUNDS + 1):
-
                 random.shuffle(players)
                 court_number = 1
 
-                for i in range(0, len(players), 4):
-                    group = players[i:i+4]
+                # Split players into courts
+                players_per_court = max(4, len(players) // NUM_COURTS)
+                for i in range(0, len(players), players_per_court):
+                    court_players = players[i:i+players_per_court]
 
-                    if len(group) < 4:
+                    if len(court_players) < 4:
                         continue
 
-                    # BALANCED TEAM LOGIC
-                    players_sorted = sorted(group, key=lambda x: x["Rating"])
-                    team_a = [players_sorted[0], players_sorted[-1]]
-                    team_b = [players_sorted[1], players_sorted[-2]]
+                    # Shuffle and assign teams
+                    court_players_sorted = sorted(court_players, key=lambda x: x["Rating"])
+                    team_a = [court_players_sorted[0], court_players_sorted[-1]]
+                    team_b = [court_players_sorted[1], court_players_sorted[-2]]
 
                     # Avoid repeat partners
                     def repeated(team):
                         return team[1]["Name"] in partner_history[team[0]["Name"]]
 
                     if repeated(team_a) or repeated(team_b):
-                        random.shuffle(players_sorted)
-                        team_a = players_sorted[:2]
-                        team_b = players_sorted[2:]
+                        random.shuffle(court_players_sorted)
+                        team_a = court_players_sorted[:2]
+                        team_b = court_players_sorted[2:4]
 
                     # Update partner history
                     partner_history[team_a[0]["Name"]].add(team_a[1]["Name"])
@@ -113,23 +115,18 @@ if uploaded_file is not None:
 
         if matches_output:
             matches_df = pd.DataFrame(matches_output)
-
             st.success("✅ Matches Generated Successfully!")
             st.dataframe(matches_df, use_container_width=True)
 
-            # ============================
-            # DOWNLOAD BUTTON (BytesIO)
-            # ============================
+            # Download Excel
             output = BytesIO()
             matches_df.to_excel(output, index=False, engine="openpyxl")
             output.seek(0)
-
             st.download_button(
                 label="📥 Download Matches Excel",
                 data=output,
                 file_name="DUPR_Matches.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
-
         else:
             st.warning("Not enough players to generate matches in the selected brackets.")
