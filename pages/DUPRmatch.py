@@ -65,14 +65,19 @@ if uploaded_file is not None:
             partner_history = defaultdict(set)
 
             # ============================
-            # Assign players to fixed courts
+            # Assign players to fixed courts evenly
             # ============================
-            courts_players = []
-            for i in range(0, len(players), 4):
-                group = players[i:i+4]
-                if len(group) < 4:
-                    continue
-                courts_players.append(group)
+        courts_players = [[] for _ in range(NUM_COURTS)]
+
+        for idx, player in enumerate(players):
+            court_idx = idx % NUM_COURTS  # Distribute players round-robin
+            courts_players[court_idx].append(player)
+
+            # Remove courts with less than 4 players (optional)
+                courts_players = [court for court in courts_players if len(court) >= 4]
+
+
+            
 
             # ============================
             # Generate rounds
