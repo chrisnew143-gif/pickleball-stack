@@ -58,7 +58,6 @@ if uploaded_file is not None:
 
         # Generate matches for each bracket
         for bracket, players in bracket_groups.items():
-
             if len(players) < 4:
                 continue  # Skip brackets with less than 4 players
 
@@ -67,17 +66,13 @@ if uploaded_file is not None:
             # ============================
             # Assign players to fixed courts evenly
             # ============================
-        courts_players = [[] for _ in range(NUM_COURTS)]
-
-        for idx, player in enumerate(players):
-            court_idx = idx % NUM_COURTS  # Distribute players round-robin
-            courts_players[court_idx].append(player)
+            courts_players = [[] for _ in range(NUM_COURTS)]
+            for idx, player in enumerate(players):
+                court_idx = idx % NUM_COURTS  # Round-robin assignment
+                courts_players[court_idx].append(player)
 
             # Remove courts with less than 4 players (optional)
-                courts_players = [court for court in courts_players if len(court) >= 4]
-
-
-            
+            courts_players = [court for court in courts_players if len(court) >= 4]
 
             # ============================
             # Generate rounds
