@@ -95,13 +95,13 @@ def delete_player(name):
     st.session_state.players.pop(name, None)
 
 # ======================================================
-# MATCH ENGINE (FIXED)
+# MATCH ENGINE (FULL FIXED)
 # ======================================================
 def take_four_safe():
+    """Take the first 4 players from the queue in order if safe."""
     q = list(st.session_state.queue)
     if len(q) < 4:
         return None
-    # Take first 4 in order and check safe
     group = q[:4]
     if safe_group(group):
         st.session_state.queue = deque(q[4:])
@@ -109,11 +109,12 @@ def take_four_safe():
     return None
 
 def make_teams(players):
-    # Keep first-come-first-play order
+    """Create two teams from 4 players, preserving first-come-first-play order."""
     return [players[:2], players[2:]]
 
 def start_match(cid):
-    if st.session_state.locked[cid]:
+    """Start a match on a court if available and not locked."""
+    if st.session_state.locked.get(cid, False):
         return
     players = take_four_safe()
     if not players:
@@ -124,10 +125,15 @@ def start_match(cid):
     st.session_state.match_start_time[cid] = datetime.now()
 
 def finish_match(cid):
-    teams = st.session_state.courts[cid]
-    scoreA, scoreB = st.session_state.scores[cid]
+    """Finish a match, update stats, return players to queue in FCFS order."""
+    teams = st.session_state.courts.get(cid)
+    if not teams:
+        return
+
+    scoreA, scoreB = st.session_state.scores.get(cid, [0, 0])
     teamA, teamB = teams
 
+    # Determine winners and losers
     if scoreA > scoreB:
         winner = "Team A"
         winners, losers = teamA, teamB
@@ -138,6 +144,7 @@ def finish_match(cid):
         winner = "DRAW"
         winners = losers = []
 
+    # Update player stats
     for p in teamA + teamB:
         st.session_state.players[p[0]]["games"] += 1
     for p in winners:
@@ -145,9 +152,9 @@ def finish_match(cid):
     for p in losers:
         st.session_state.players[p[0]]["losses"] += 1
 
+    # Record match history
     end_time = datetime.now()
     start_time = st.session_state.match_start_time.get(cid)
-
     if start_time:
         duration = round((end_time - start_time).total_seconds() / 60, 2)
         start_str = start_time.strftime("%H:%M:%S")
@@ -169,26 +176,38 @@ def finish_match(cid):
         "Duration (Minutes)": duration
     })
 
-    # Clear start time
+    # Clear court and start time
     st.session_state.match_start_time.pop(cid, None)
-
-    # Return players to queue in FCFS order (remove shuffle)
-    players = teamA + teamB
-    st.session_state.queue.extend(players)
-
     st.session_state.courts[cid] = None
     st.session_state.locked[cid] = False
     st.session_state.scores[cid] = [0, 0]
 
+    # Return all players to queue in original order (FCFS)
+    st.session_state.queue.extend(teamA + teamB)
+
+def auto_fill():
+    """Automatically fill empty courts if the queue has enough players."""
+    if not st.session_state.started:
+        return
+    for cid in range(1, st.session_state.court_count + 1):
+        if st.session_state.courts.get(cid) is None:
+            start_match(cid)
+
 # ===================== WINNER WINNER BUTTON LOGIC =====================
 def winner_winner(cid):
-    teams = st.session_state.courts[cid]
-    scoreA, scoreB = st.session_state.scores[cid]
+    """Keep winners on court and rotate losers to queue."""
+    teams = st.session_state.courts.get(cid)
+    if not teams:
+        st.warning("No players on court to apply Winner Winner")
+        return
+
+    scoreA, scoreB = st.session_state.scores.get(cid, [0, 0])
+    teamA, teamB = teams
 
     if scoreA > scoreB:
-        winners, losers = teams[0], teams[1]
+        winners, losers = teamA, teamB
     elif scoreB > scoreA:
-        winners, losers = teams[1], teams[0]
+        winners, losers = teamB, teamA
     else:
         st.warning("Match is a draw, cannot use Winner Winner")
         return
@@ -199,7 +218,6 @@ def winner_winner(cid):
     st.session_state.courts[cid] = [winners[:2], winners[2:]] if len(winners) > 2 else [winners, []]
     st.session_state.scores[cid] = [0, 0]
     st.rerun()
-
 
 # ======================================================
 # CSV EXPORTS
