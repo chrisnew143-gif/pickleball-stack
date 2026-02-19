@@ -272,7 +272,7 @@ def delete_profile(name):
         st.error("Profile not found!")
 
 # ======================================================
-# SIDEBAR (ORGANIZED WITH DROPDOWNS)
+# SIDEBAR (ORGANIZED WITH DROPDOWNS + DELETE PLAYER)
 # ======================================================
 with st.sidebar:
 
@@ -304,14 +304,14 @@ with st.sidebar:
                     {"dupr": dupr, "games":0, "wins":0, "losses":0}
                 )
 
-    # ================== REMOVE PLAYER ==================
+    # ================== DELETE PLAYER ==================
     if st.session_state.players:
-        with st.expander("❌ Remove Player", expanded=False):
+        with st.expander("❌ Delete Player", expanded=False):
             remove = st.selectbox(
-                "Select Player",
+                "Select Player to Remove",
                 list(st.session_state.players.keys())
             )
-            if st.button("Delete"):
+            if st.button("Delete Player"):
                 delete_player(remove)
                 st.rerun()
 
