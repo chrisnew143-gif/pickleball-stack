@@ -20,7 +20,7 @@ uploaded_file = st.file_uploader("Upload Players Excel File", type=["xlsx", "csv
 # ============================
 # CONFIG INPUTS
 # ============================
-ROUNDS = st.number_input("Number of Rounds", min_value=1, max_value=20, value=3)
+NUM_MATCHES = st.number_input("Number of Matches", min_value=1, max_value=50, value=5)
 NUM_COURTS = st.number_input("Number of Courts", min_value=1, max_value=10, value=4)
 
 # ============================
@@ -76,7 +76,7 @@ if uploaded_file is not None:
                 })
 
         # ============================
-        # GENERATE MATCHES PER COURT
+        # GENERATE MATCHES
         # ============================
         for court_number, court_players in enumerate(courts_players, start=1):
 
@@ -85,47 +85,42 @@ if uploaded_file is not None:
 
             partner_history = defaultdict(set)
 
-            for round_number in range(1, ROUNDS + 1):
+            for match_number in range(1, NUM_MATCHES + 1):
 
                 random.shuffle(court_players)
 
-                # Rotate players if more than 4 (round robin style)
-                for i in range(0, len(court_players), 4):
-                    group = court_players[i:i+4]
+                group = court_players[:4]
 
-                    if len(group) < 4:
-                        continue
+                # Balanced pairing (strongest + weakest)
+                group_sorted = sorted(group, key=lambda x: x["Rating"])
+                team_a = [group_sorted[0], group_sorted[-1]]
+                team_b = [group_sorted[1], group_sorted[2]]
 
-                    # Balanced team pairing (strong + weak)
-                    group_sorted = sorted(group, key=lambda x: x["Rating"])
-                    team_a = [group_sorted[0], group_sorted[-1]]
-                    team_b = [group_sorted[1], group_sorted[2]]
+                # Avoid repeat partners
+                def repeated(team):
+                    return team[1]["Name"] in partner_history[team[0]["Name"]]
 
-                    # Avoid repeat partners
-                    def repeated(team):
-                        return team[1]["Name"] in partner_history[team[0]["Name"]]
+                if repeated(team_a) or repeated(team_b):
+                    random.shuffle(group_sorted)
+                    team_a = group_sorted[:2]
+                    team_b = group_sorted[2:4]
 
-                    if repeated(team_a) or repeated(team_b):
-                        random.shuffle(group_sorted)
-                        team_a = group_sorted[:2]
-                        team_b = group_sorted[2:4]
+                # Update partner history
+                partner_history[team_a[0]["Name"]].add(team_a[1]["Name"])
+                partner_history[team_a[1]["Name"]].add(team_a[0]["Name"])
+                partner_history[team_b[0]["Name"]].add(team_b[1]["Name"])
+                partner_history[team_b[1]["Name"]].add(team_b[0]["Name"])
 
-                    # Update partner history
-                    partner_history[team_a[0]["Name"]].add(team_a[1]["Name"])
-                    partner_history[team_a[1]["Name"]].add(team_a[0]["Name"])
-                    partner_history[team_b[0]["Name"]].add(team_b[1]["Name"])
-                    partner_history[team_b[1]["Name"]].add(team_b[0]["Name"])
-
-                    matches_output.append({
-                        "Court": court_number,
-                        "Round": round_number,
-                        "Team A Player 1": team_a[0]["Name"],
-                        "Team A Player 2": team_a[1]["Name"],
-                        "Team A Avg Rating": round((team_a[0]["Rating"] + team_a[1]["Rating"]) / 2, 3),
-                        "Team B Player 1": team_b[0]["Name"],
-                        "Team B Player 2": team_b[1]["Name"],
-                        "Team B Avg Rating": round((team_b[0]["Rating"] + team_b[1]["Rating"]) / 2, 3),
-                    })
+                matches_output.append({
+                    "Court": court_number,
+                    "Match": match_number,
+                    "Team A Player 1": team_a[0]["Name"],
+                    "Team A Player 2": team_a[1]["Name"],
+                    "Team A Avg Rating": round((team_a[0]["Rating"] + team_a[1]["Rating"]) / 2, 3),
+                    "Team B Player 1": team_b[0]["Name"],
+                    "Team B Player 2": team_b[1]["Name"],
+                    "Team B Avg Rating": round((team_b[0]["Rating"] + team_b[1]["Rating"]) / 2, 3),
+                })
 
         # ============================
         # DISPLAY RESULTS
@@ -133,7 +128,7 @@ if uploaded_file is not None:
         if matches_output:
 
             matches_df = pd.DataFrame(matches_output)
-            st.success("✅ Fair Matches Generated Successfully!")
+            st.success("✅ Matches Generated Successfully!")
             st.dataframe(matches_df, use_container_width=True)
 
             # Download Matches Excel
@@ -144,7 +139,7 @@ if uploaded_file is not None:
             st.download_button(
                 label="📥 Download Match Schedule",
                 data=output_matches,
-                file_name="DUPR_Fair_Matches.xlsx",
+                file_name="DUPR_Match_Schedule.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
 
