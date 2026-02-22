@@ -25,3 +25,11 @@ if st.button("🏆 DUPR Match", use_container_width=True):
     st.switch_page("pages/DUPRMatch.py")
 
 st.divider()
+
+# =========================
+# Players Profile Button
+# =========================
+if st.button("👤 Players Profile", use_container_width=True):
+    st.caption("🚧 Under Construction")
+
+st.divider()
