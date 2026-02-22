@@ -2,6 +2,16 @@ import streamlit as st
 
 st.set_page_config(page_title="Pickleball Manager", layout="centered")
 
+# =========================
+# HEADER PHOTO
+# =========================
+col1, col2, col3 = st.columns([1,2,1])
+with col2:
+    st.image("TDphoto.jpg", width=300)
+
+st.title("🎾 Pickleball Auto Stack TiraDinks Official")
+st.caption("WE CAMED WE DINKED!")
+
 st.title("🏠 TiraDinks Official")
 st.write("Welcome to the TiraDinks Club!")
 
