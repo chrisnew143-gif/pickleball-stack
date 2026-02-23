@@ -177,10 +177,8 @@ def finish_match(cid):
 
     for p in teamA + teamB:
         st.session_state.players[p[0]]["games"] += 1
-
     for p in winners:
         st.session_state.players[p[0]]["wins"] += 1
-
     for p in losers:
         st.session_state.players[p[0]]["losses"] += 1
 
@@ -193,14 +191,9 @@ def finish_match(cid):
 
     end_time = datetime.now()
     start_time = st.session_state.match_start_time.get(cid)
-    if start_time:
-        duration = round((end_time - start_time).total_seconds() / 60, 2)
-        start_str = start_time.strftime("%H:%M:%S")
-        end_str = end_time.strftime("%H:%M:%S")
-    else:
-        duration = 0
-        start_str = ""
-        end_str = ""
+    duration = round((end_time - start_time).total_seconds() / 60, 2) if start_time else 0
+    start_str = start_time.strftime("%H:%M:%S") if start_time else ""
+    end_str = end_time.strftime("%H:%M:%S") if start_time else ""
 
     st.session_state.history.append({
         "Court": cid,
@@ -332,7 +325,7 @@ def delete_profile(name):
 with st.sidebar:
     st.markdown('<h4 style="margin-bottom:10px;">⚙ Setup</h4>', unsafe_allow_html=True)
 
-    # Courts
+    # COURTS
     with st.expander("🏟 Courts", expanded=True):
         st.session_state.court_count = st.selectbox(
             "Number of Courts",
@@ -340,7 +333,7 @@ with st.sidebar:
             index=st.session_state.court_count - 2
         )
 
-    # Add Player Form
+    # ADD PLAYER
     with st.form("add", clear_on_submit=True):
         name = st.text_input("Name")
         dupr = st.text_input("DUPR ID")
@@ -374,7 +367,7 @@ with st.sidebar:
 
             st.success(f"Player '{name}' added!")
 
-    # Delete Player
+    # DELETE PLAYER
     if st.session_state.players:
         with st.expander("❌ Delete Player", expanded=False):
             remove = st.selectbox(
@@ -385,7 +378,7 @@ with st.sidebar:
                 delete_player(remove)
                 st.rerun()
 
-    # Start / Reset
+    # START / RESET
     with st.expander("🚀 Start / Reset", expanded=True):
         col1, col2 = st.columns(2)
         with col1:
@@ -400,12 +393,12 @@ with st.sidebar:
                 st.session_state.clear()
                 st.rerun()
 
-    # Export CSV
+    # EXPORT CSV
     with st.expander("📥 Export CSV", expanded=False):
         st.download_button("Matches CSV", matches_csv(), "matches.csv")
         st.download_button("Players CSV", players_csv(), "players.csv")
 
-    # Profiles
+    # PROFILES
     with st.expander("💾 Profiles", expanded=False):
         profile_name = st.text_input("Profile Name")
         col1, col2 = st.columns(2)
@@ -426,6 +419,7 @@ with st.sidebar:
 # ======================================================
 auto_fill()
 
+# WAITING QUEUE
 st.subheader("⏳ Waiting Queue")
 if st.session_state.queue:
     st.markdown(
@@ -434,6 +428,43 @@ if st.session_state.queue:
     )
 else:
     st.success("No players waiting 🎉")
+
+# LIVE COURTS
+st.subheader("🏟 Live Courts")
+for cid in range(1, st.session_state.court_count + 1):
+    teams = st.session_state.courts.get(cid)
+    if not teams:
+        st.markdown(f"**Court {cid}** - waiting for players")
+        continue
+
+    teamA, teamB = teams
+    scoreA, scoreB = st.session_state.scores.get(cid, [0, 0])
+
+    with st.container():
+        st.markdown(f"### Court {cid}")
+        col1, col2 = st.columns([2, 2])
+        with col1:
+            st.markdown(f"**Team A**: {', '.join(fmt(p) for p in teamA)}")
+            st.markdown(f"Score: {scoreA}")
+        with col2:
+            st.markdown(f"**Team B**: {', '.join(fmt(p) for p in teamB)}")
+            st.markdown(f"Score: {scoreB}")
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button(f"Team A +1 (Court {cid})"):
+                st.session_state.scores[cid][0] += 1
+        with col2:
+            if st.button(f"Team B +1 (Court {cid})"):
+                st.session_state.scores[cid][1] += 1
+        with col3:
+            if st.button(f"Finish Match (Court {cid})"):
+                finish_match(cid)
+                st.rerun()
+
+        if st.button(f"Winner Winner (Court {cid})"):
+            winner_winner(cid)
+            st.rerun()
 
 if not st.session_state.started:
     st.stop()
