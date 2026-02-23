@@ -332,6 +332,7 @@ def delete_profile(name):
 with st.sidebar:
     st.markdown('<h4 style="margin-bottom:10px;">⚙ Setup</h4>', unsafe_allow_html=True)
 
+    # Courts
     with st.expander("🏟 Courts", expanded=True):
         st.session_state.court_count = st.selectbox(
             "Number of Courts",
@@ -339,44 +340,41 @@ with st.sidebar:
             index=st.session_state.court_count - 2
         )
 
+    # Add Player Form
     with st.form("add", clear_on_submit=True):
-    name = st.text_input("Name")
-    dupr = st.text_input("DUPR ID")
-    skill = st.radio(
-        "Skill",
-        ["Beginner", "Novice", "Intermediate"],
-        horizontal=True
-    )
-    submitted = st.form_submit_button("Add Player")
-    
-    if submitted and name:
-        # -----------------------------
-        # SAFE DUPR HANDLING
-        # -----------------------------
-        try:
-            dupr_value = int(dupr) if dupr.strip() else None
-        except ValueError:
-            st.error("DUPR must be a number!")
-            dupr_value = None
-
-        # Add to session state
-        st.session_state.queue.append((name, skill.upper(), dupr_value if dupr_value is not None else ""))
-        st.session_state.players.setdefault(
-            name,
-            {"dupr": dupr_value if dupr_value is not None else "", "games": 0, "wins": 0, "losses": 0}
+        name = st.text_input("Name")
+        dupr = st.text_input("DUPR ID")
+        skill = st.radio(
+            "Skill",
+            ["Beginner", "Novice", "Intermediate"],
+            horizontal=True
         )
+        submitted = st.form_submit_button("Add Player")
 
-        # Save new player to Supabase
-        supabase.table("players").insert({
-            "name": name,
-            "dupr": dupr_value,
-            "games": 0,
-            "wins": 0,
-            "losses": 0
-        }).execute()
+        if submitted and name:
+            try:
+                dupr_value = int(dupr) if dupr.strip() else None
+            except ValueError:
+                st.error("DUPR must be a number!")
+                dupr_value = None
 
-        st.success(f"Player '{name}' added!")
+            st.session_state.queue.append((name, skill.upper(), dupr_value if dupr_value is not None else ""))
+            st.session_state.players.setdefault(
+                name,
+                {"dupr": dupr_value if dupr_value is not None else "", "games": 0, "wins": 0, "losses": 0}
+            )
 
+            supabase.table("players").insert({
+                "name": name,
+                "dupr": dupr_value,
+                "games": 0,
+                "wins": 0,
+                "losses": 0
+            }).execute()
+
+            st.success(f"Player '{name}' added!")
+
+    # Delete Player
     if st.session_state.players:
         with st.expander("❌ Delete Player", expanded=False):
             remove = st.selectbox(
@@ -387,6 +385,7 @@ with st.sidebar:
                 delete_player(remove)
                 st.rerun()
 
+    # Start / Reset
     with st.expander("🚀 Start / Reset", expanded=True):
         col1, col2 = st.columns(2)
         with col1:
@@ -401,10 +400,12 @@ with st.sidebar:
                 st.session_state.clear()
                 st.rerun()
 
+    # Export CSV
     with st.expander("📥 Export CSV", expanded=False):
         st.download_button("Matches CSV", matches_csv(), "matches.csv")
         st.download_button("Players CSV", players_csv(), "players.csv")
 
+    # Profiles
     with st.expander("💾 Profiles", expanded=False):
         profile_name = st.text_input("Profile Name")
         col1, col2 = st.columns(2)
