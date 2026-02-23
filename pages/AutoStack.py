@@ -354,7 +354,6 @@ with st.sidebar:
         # SAFE DUPR HANDLING
         # -----------------------------
         try:
-            # Convert DUPR to int if numeric, otherwise None
             dupr_value = int(dupr) if dupr.strip() else None
         except ValueError:
             st.error("DUPR must be a number!")
@@ -367,12 +366,10 @@ with st.sidebar:
             {"dupr": dupr_value if dupr_value is not None else "", "games": 0, "wins": 0, "losses": 0}
         )
 
-        # -----------------------------
         # Save new player to Supabase
-        # -----------------------------
         supabase.table("players").insert({
             "name": name,
-            "dupr": dupr_value,  # insert None if empty
+            "dupr": dupr_value,
             "games": 0,
             "wins": 0,
             "losses": 0
