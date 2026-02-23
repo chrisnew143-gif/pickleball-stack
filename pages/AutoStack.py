@@ -340,14 +340,17 @@ with st.sidebar:
             index=st.session_state.court_count-2
         )
 
-    # ================== ADD PLAYER ==================
+   # ================== ADD PLAYER ==================
     with st.expander("➕ Add Player", expanded=False):
-        # 1️⃣ Fetch all registered players from Supabase
+    # 1️⃣ Fetch all registered players from Supabase
     try:
         registered_players = supabase.table("players").select("*").execute().data
     except Exception as e:
         st.error(f"Error fetching players from database: {e}")
         registered_players = []
+
+    # 2️⃣ Extract names for dropdown
+    player_names = [p["name"] for p in registered_players]
 
     player_names = [p["name"] for p in registered_players]
         with st.form("add", clear_on_submit=True):
