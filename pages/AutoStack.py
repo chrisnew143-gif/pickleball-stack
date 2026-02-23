@@ -291,10 +291,12 @@ def load_profile(name):
     with open(path, "r") as f:
         data = json.load(f)
 
+    
+   # Convert keys back to int (VERY IMPORTANT)
+    st.session_state.courts = {int(k): v for k, v in data["courts"].items()}
+    st.session_state.locked = {int(k): v for k, v in data["locked"].items()}
+    st.session_state.scores = {int(k): v for k, v in data["scores"].items()}
     st.session_state.queue = deque(data["queue"])
-    st.session_state.courts = data["courts"]
-    st.session_state.locked = data["locked"]
-    st.session_state.scores = data["scores"]
     st.session_state.history = data["history"]
     st.session_state.started = data["started"]
     st.session_state.court_count = data["court_count"]
