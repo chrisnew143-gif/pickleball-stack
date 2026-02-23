@@ -340,10 +340,9 @@ with st.sidebar:
             index=st.session_state.court_count-2
         )
 
-   # ================== ADD PLAYER ==================
-with st.expander("➕ Add Player", expanded=False):
-    
-    # 1️⃣ Fetch all registered players from Supabase
+    # ================== ADD PLAYER ==================
+    with st.expander("➕ Add Player", expanded=False):
+        # 1️⃣ Fetch all registered players from Supabase
     try:
         registered_players = supabase.table("players").select("*").execute().data
     except Exception as e:
@@ -351,37 +350,21 @@ with st.expander("➕ Add Player", expanded=False):
         registered_players = []
 
     player_names = [p["name"] for p in registered_players]
-
-    # 2️⃣ Add Player Form
-    with st.form("add", clear_on_submit=True):
-        selected_name = st.selectbox("Select Registered Player", [""] + player_names)
-
-        # 3️⃣ Auto-fill DUPR and Skill if a player is selected
-        if selected_name:
-            player_data = next((p for p in registered_players if p["name"] == selected_name), None)
-            dupr = player_data["dupr"]
-            skill = player_data["skill"].capitalize()
-        else:
-            dupr = ""
-            skill = "Beginner"
-
-        # 4️⃣ Allow skill adjustment (optional)
-        skill_radio = st.radio(
-            "Skill",
-            ["Beginner", "Novice", "Intermediate"],
-            index=["Beginner","Novice","Intermediate"].index(skill),
-            horizontal=True
-        )
-
-        submitted = st.form_submit_button("Add Player")
-        if submitted and selected_name:
-            # Add to queue and session players
-            st.session_state.queue.append((selected_name, skill.upper(), dupr))
-            st.session_state.players.setdefault(
-                selected_name,
-                {"dupr": dupr, "games":0, "wins":0, "losses":0}
+        with st.form("add", clear_on_submit=True):
+            name = st.text_input("Name")
+            dupr = st.text_input("DUPR ID")
+            skill = st.radio(
+                "Skill",
+                ["Beginner","Novice","Intermediate"],
+                horizontal=True
             )
-            st.success(f"Added player {selected_name} to queue!")
+            submitted = st.form_submit_button("Add Player")
+            if submitted and name:
+                st.session_state.queue.append((name, skill.upper(), dupr))
+                st.session_state.players.setdefault(
+                    name,
+                    {"dupr": dupr, "games":0, "wins":0, "losses":0}
+                )
 
     # ================== DELETE PLAYER ==================
     if st.session_state.players:
