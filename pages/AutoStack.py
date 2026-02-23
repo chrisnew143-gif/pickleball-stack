@@ -184,27 +184,28 @@ def finish_match(cid):
     elif scoreB > scoreA:
         winner = "Team B"
         winners, losers = teamB, teamA
-     else:
-    winner = "DRAW"
-    winners = losers = []
+    else:
+        winner = "DRAW"
+        winners = losers = []
 
-# Update player stats
+    # Update player stats
     for p in teamA + teamB:
-    st.session_state.players[p[0]]["games"] += 1
+        st.session_state.players[p[0]]["games"] += 1
 
     for p in winners:
-    st.session_state.players[p[0]]["wins"] += 1
+        st.session_state.players[p[0]]["wins"] += 1
 
     for p in losers:
-    st.session_state.players[p[0]]["losses"] += 1
+        st.session_state.players[p[0]]["losses"] += 1
 
-# Sync with Supabase
+    # Sync with Supabase
     for p_name, data in st.session_state.players.items():
-    supabase.table("players").update({
-        "games": data["games"],
-        "wins": data["wins"],
-        "losses": data["losses"]
-    }).eq("name", p_name).execute()
+        supabase.table("players").update({
+            "games": data["games"],
+            "wins": data["wins"],
+            "losses": data["losses"]
+        }).eq("name", p_name).execute()
+
     # Record match history
     end_time = datetime.now()
     start_time = st.session_state.match_start_time.get(cid)
