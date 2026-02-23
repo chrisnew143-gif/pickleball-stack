@@ -341,7 +341,8 @@ with st.sidebar:
         )
 
    # ================== ADD PLAYER ==================
-    with st.expander("➕ Add Player", expanded=False):
+with st.expander("➕ Add Player", expanded=False):
+
     # 1️⃣ Fetch all registered players from Supabase
     try:
         registered_players = supabase.table("players").select("*").execute().data
@@ -349,25 +350,29 @@ with st.sidebar:
         st.error(f"Error fetching players from database: {e}")
         registered_players = []
 
-    # 2️⃣ Extract names for dropdown
     player_names = [p["name"] for p in registered_players]
 
-    player_names = [p["name"] for p in registered_players]
-        with st.form("add", clear_on_submit=True):
-            name = st.text_input("Name")
-            dupr = st.text_input("DUPR ID")
-            skill = st.radio(
-                "Skill",
-                ["Beginner","Novice","Intermediate"],
-                horizontal=True
-            )
-            submitted = st.form_submit_button("Add Player")
-            if submitted and name:
-                st.session_state.queue.append((name, skill.upper(), dupr))
+    # 2️⃣ Add Player Form
+    with st.form("add_player_form", clear_on_submit=True):
+        selected_name = st.selectbox("Select Registered Player", [""] + player_names)
+
+        submitted = st.form_submit_button("Add Player")
+        if submitted and selected_name:
+            if selected_name in st.session_state.players:
+                st.warning(f"{selected_name} is already in the queue!")
+            else:
+                # Fetch the player's details from Supabase
+                player_data = next((p for p in registered_players if p["name"] == selected_name), None)
+                dupr = player_data["dupr"]
+                skill = player_data["skill"].upper()
+
+                # Add to queue and session players
+                st.session_state.queue.append((selected_name, skill, dupr))
                 st.session_state.players.setdefault(
-                    name,
+                    selected_name,
                     {"dupr": dupr, "games":0, "wins":0, "losses":0}
                 )
+                st.success(f"Added player {selected_name} to queue!")
 
     # ================== DELETE PLAYER ==================
     if st.session_state.players:
