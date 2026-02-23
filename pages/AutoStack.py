@@ -340,8 +340,8 @@ with st.sidebar:
             index=st.session_state.court_count-2
         )
 
-   # ================== ADD PLAYER ==================
-with st.expander("➕ Add Player", expanded=False):
+   # ================== ADD PLAYER (SIDEBAR) ==================
+with st.sidebar.expander("➕ Add Player", expanded=False):
 
     # 1️⃣ Fetch all registered players from Supabase
     try:
@@ -350,7 +350,8 @@ with st.expander("➕ Add Player", expanded=False):
         st.error(f"Error fetching players from database: {e}")
         registered_players = []
 
-    player_names = [p["name"] for p in registered_players]
+    # Build list of player names safely
+    player_names = [p.get("name", "") for p in registered_players if "name" in p]
 
     # 2️⃣ Add Player Form
     with st.form("add_player_form", clear_on_submit=True):
@@ -358,21 +359,28 @@ with st.expander("➕ Add Player", expanded=False):
 
         submitted = st.form_submit_button("Add Player")
         if submitted and selected_name:
+
+            # Prevent duplicates
             if selected_name in st.session_state.players:
                 st.warning(f"{selected_name} is already in the queue!")
             else:
-                # Fetch the player's details from Supabase
-                player_data = next((p for p in registered_players if p["name"] == selected_name), None)
-                dupr = player_data["dupr"]
-                skill = player_data["skill"].upper()
+                # Find the player data safely
+                player_data = next((p for p in registered_players if p.get("name") == selected_name), None)
+                
+                if not player_data:
+                    st.error("Player data not found in database!")
+                else:
+                    # Get skill and DUPR safely with defaults
+                    dupr = player_data.get("dupr", "N/A")
+                    skill = player_data.get("skill", "BEGINNER").upper()
 
-                # Add to queue and session players
-                st.session_state.queue.append((selected_name, skill, dupr))
-                st.session_state.players.setdefault(
-                    selected_name,
-                    {"dupr": dupr, "games":0, "wins":0, "losses":0}
-                )
-                st.success(f"Added player {selected_name} to queue!")
+                    # Add to queue and session players
+                    st.session_state.queue.append((selected_name, skill, dupr))
+                    st.session_state.players.setdefault(
+                        selected_name,
+                        {"dupr": dupr, "games":0, "wins":0, "losses":0}
+                    )
+                    st.success(f"Added player {selected_name} to queue!")
 
     # ================== DELETE PLAYER ==================
     if st.session_state.players:
