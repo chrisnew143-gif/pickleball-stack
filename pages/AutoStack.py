@@ -340,28 +340,45 @@ with st.sidebar:
         )
 
     with st.form("add", clear_on_submit=True):
-        name = st.text_input("Name")
-        dupr = st.text_input("DUPR ID")
-        skill = st.radio(
-            "Skill",
-            ["Beginner", "Novice", "Intermediate"],
-            horizontal=True
+    name = st.text_input("Name")
+    dupr = st.text_input("DUPR ID")
+    skill = st.radio(
+        "Skill",
+        ["Beginner", "Novice", "Intermediate"],
+        horizontal=True
+    )
+    submitted = st.form_submit_button("Add Player")
+    
+    if submitted and name:
+        # -----------------------------
+        # SAFE DUPR HANDLING
+        # -----------------------------
+        try:
+            # Convert DUPR to int if numeric, otherwise None
+            dupr_value = int(dupr) if dupr.strip() else None
+        except ValueError:
+            st.error("DUPR must be a number!")
+            dupr_value = None
+
+        # Add to session state
+        st.session_state.queue.append((name, skill.upper(), dupr_value if dupr_value is not None else ""))
+        st.session_state.players.setdefault(
+            name,
+            {"dupr": dupr_value if dupr_value is not None else "", "games": 0, "wins": 0, "losses": 0}
         )
-        submitted = st.form_submit_button("Add Player")
-        if submitted and name:
-            st.session_state.queue.append((name, skill.upper(), dupr))
-            st.session_state.players.setdefault(
-                name,
-                {"dupr": dupr, "games": 0, "wins": 0, "losses": 0}
-            )
-            supabase.table("players").insert({
-                "name": name,
-                "dupr": dupr,
-                "games": 0,
-                "wins": 0,
-                "losses": 0
-            }).execute()
-            st.success(f"Player '{name}' added!")
+
+        # -----------------------------
+        # Save new player to Supabase
+        # -----------------------------
+        supabase.table("players").insert({
+            "name": name,
+            "dupr": dupr_value,  # insert None if empty
+            "games": 0,
+            "wins": 0,
+            "losses": 0
+        }).execute()
+
+        st.success(f"Player '{name}' added!")
 
     if st.session_state.players:
         with st.expander("❌ Delete Player", expanded=False):
