@@ -184,15 +184,17 @@ def finish_match(cid):
     elif scoreB > scoreA:
         winner = "Team B"
         winners, losers = teamB, teamA
-    else:
-        winner = "DRAW"
-        winners = losers = []
+     else:
+    winner = "DRAW"
+    winners = losers = []
 
-    # Update player stats
+# Update player stats
     for p in teamA + teamB:
     st.session_state.players[p[0]]["games"] += 1
+
     for p in winners:
     st.session_state.players[p[0]]["wins"] += 1
+
     for p in losers:
     st.session_state.players[p[0]]["losses"] += 1
 
@@ -203,7 +205,6 @@ def finish_match(cid):
         "wins": data["wins"],
         "losses": data["losses"]
     }).eq("name", p_name).execute()
-
     # Record match history
     end_time = datetime.now()
     start_time = st.session_state.match_start_time.get(cid)
