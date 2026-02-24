@@ -174,7 +174,7 @@ def update_player_stats_db(name, games_inc=0, wins_inc=0, losses_inc=0):
         st.error(f"DB update error for {name}: {e}")
 
 def finish_match(cid):
-    """Finish a match, update stats, return players to queue in FCFS order."""
+    """Finish a match, update stats, return losers to queue, update Supabase, and record history."""
     teams = st.session_state.courts.get(cid)
     if not teams:
         return
@@ -185,12 +185,17 @@ def finish_match(cid):
     # Determine winners and losers
     if scoreA > scoreB:
         winners, losers = teamA, teamB
+        winner_names = [p[0] for p in winners]
     elif scoreB > scoreA:
         winners, losers = teamB, teamA
+        winner_names = [p[0] for p in winners]
     else:
-        winners = losers = []
+        # DRAW: no winner
+        winners = []
+        losers = teamA + teamB
+        winner_names = ["DRAW"]
 
-    # ================= UPDATE STATS =================
+    # ================= UPDATE STATS IN SESSION =================
     for p in teamA + teamB:
         st.session_state.players[p[0]]["games"] += 1
     for p in winners:
@@ -198,7 +203,7 @@ def finish_match(cid):
     for p in losers:
         st.session_state.players[p[0]]["losses"] += 1
 
-    # ================= SAVE TO SUPABASE =================
+    # ================= UPDATE STATS IN SUPABASE =================
     for p in teamA + teamB:
         name = p[0]
         stats = st.session_state.players[name]
@@ -211,11 +216,9 @@ def finish_match(cid):
         except Exception as e:
             st.error(f"DB update error for {name}: {e}")
 
-    # ... rest of finish_match() (history, clear court, return players to queue)
     # ================= RECORD MATCH HISTORY =================
     end_time = datetime.now()
     start_time = st.session_state.match_start_time.get(cid)
-
     if start_time:
         duration = round((end_time - start_time).total_seconds() / 60, 2)
         start_str = start_time.strftime("%H:%M:%S")
@@ -231,7 +234,7 @@ def finish_match(cid):
         "Team B": " & ".join(p[0] for p in teamB),
         "Score A": scoreA,
         "Score B": scoreB,
-        "Winner": winner,
+        "Winner": " & ".join(winner_names),
         "Start Time": start_str,
         "End Time": end_str,
         "Duration (Minutes)": duration
@@ -243,15 +246,22 @@ def finish_match(cid):
     st.session_state.locked[cid] = False
     st.session_state.scores[cid] = [0, 0]
 
-    # Return players to queue (FCFS)
-    st.session_state.queue.extend(teamA + teamB)
+    # ================= ROTATE PLAYERS =================
+    # Only losers go back to the end of the queue
+    st.session_state.queue.extend(losers)
+
 def auto_fill():
     """Automatically fill empty courts if the queue has enough players."""
     if not st.session_state.started:
         return
     for cid in range(1, st.session_state.court_count + 1):
         if st.session_state.courts.get(cid) is None:
-            start_match(cid)
+            players = take_four_safe()  # get next safe 4 from queue
+            if players:
+                st.session_state.courts[cid] = [players[:2], players[2:]]
+                st.session_state.locked[cid] = True
+                st.session_state.scores[cid] = [0, 0]
+                st.session_state.match_start_time[cid] = datetime.now()
 
 # ===================== WINNER WINNER BUTTON LOGIC =====================
 def winner_winner(cid):
