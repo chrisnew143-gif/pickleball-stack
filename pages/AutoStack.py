@@ -194,22 +194,27 @@ def finish_match(cid):
         winners = []
         losers = []
 
-    # ================= UPDATE STATS =================
-    for p in teamA + teamB:
-        name = p[0]
+   # Update session stats (YOUR ORIGINAL LOGIC)
+for p in teamA + teamB:
+    st.session_state.players[p[0]]["games"] += 1
+for p in winners:
+    st.session_state.players[p[0]]["wins"] += 1
+for p in losers:
+    st.session_state.players[p[0]]["losses"] += 1
 
-        games_inc = 1
-        wins_inc = 1 if p in winners else 0
-        losses_inc = 1 if p in losers else 0
+# Save to Supabase
+for p in teamA + teamB:
+    name = p[0]
+    player_stats = st.session_state.players[name]
 
-        # Update session state
-        st.session_state.players[name]["games"] += games_inc
-        st.session_state.players[name]["wins"] += wins_inc
-        st.session_state.players[name]["losses"] += losses_inc
-
-        # Update database (single call per player)
-        update_player_stats_db(name, games_inc, wins_inc, losses_inc)
-
+    supabase.table("players") \
+        .update({
+            "games": player_stats["games"],
+            "wins": player_stats["wins"],
+            "losses": player_stats["losses"]
+        }) \
+        .eq("name", name) \
+        .execute()
     # ================= RECORD MATCH HISTORY =================
     end_time = datetime.now()
     start_time = st.session_state.match_start_time.get(cid)
