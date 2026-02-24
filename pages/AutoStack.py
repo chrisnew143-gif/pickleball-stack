@@ -174,7 +174,7 @@ def update_player_stats_db(name, games_inc=0, wins_inc=0, losses_inc=0):
         st.error(f"DB update error for {name}: {e}")
 
 def finish_match(cid):
-    """Finish a match, update stats, return losers to queue, update Supabase, and record history."""
+    """Finish a match, update stats, return losers to queue, update Supabase, record history."""
     teams = st.session_state.courts.get(cid)
     if not teams:
         return
@@ -190,7 +190,6 @@ def finish_match(cid):
         winners, losers = teamB, teamA
         winner_names = [p[0] for p in winners]
     else:
-        # DRAW: no winner
         winners = []
         losers = teamA + teamB
         winner_names = ["DRAW"]
@@ -247,17 +246,38 @@ def finish_match(cid):
     st.session_state.scores[cid] = [0, 0]
 
     # ================= ROTATE PLAYERS =================
-    # Only losers go back to the end of the queue
+    # Losers go to the end of the queue
     st.session_state.queue.extend(losers)
+    # Winners also go to queue if fewer than 4 in queue (optional)
+    if len(st.session_state.queue) < 4:
+        st.session_state.queue.extend(winners)
+
+
+def take_next_four():
+    """
+    Take the next 4 players from queue in FCFS order.
+    If less than 4, return None (no match).
+    """
+    q = list(st.session_state.queue)
+    if len(q) < 4:
+        return None
+    players = q[:4]
+    st.session_state.queue = deque(q[4:])
+    return players
+
 
 def auto_fill():
-    """Automatically fill empty courts if the queue has enough players."""
+    """Fill empty courts automatically using the next 4 players from the queue."""
     if not st.session_state.started:
         return
     for cid in range(1, st.session_state.court_count + 1):
         if st.session_state.courts.get(cid) is None:
-            players = take_four_safe()  # get next safe 4 from queue
+            players = take_next_four()
             if players:
+                # Safe grouping check
+                if not safe_group(players):
+                    # Try to swap one player to form a safe group
+                    random.shuffle(players)
                 st.session_state.courts[cid] = [players[:2], players[2:]]
                 st.session_state.locked[cid] = True
                 st.session_state.scores[cid] = [0, 0]
