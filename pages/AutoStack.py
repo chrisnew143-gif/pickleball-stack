@@ -393,7 +393,6 @@ with st.sidebar.expander("➕ Add Player", expanded=False):
                         {"dupr": dupr, "games":0, "wins":0, "losses":0}
                     )
                     st.success(f"Added player {selected_name} to queue!")
-                )
 
     # ================== DELETE PLAYER ==================
     if st.session_state.players:
