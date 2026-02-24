@@ -96,16 +96,53 @@ else:
     st.sidebar.info("No players to delete.")
 
 # =====================================================
-# MAIN PAGE - DISPLAY PLAYERS
+# MAIN PAGE - HD TABLE DISPLAY
 # =====================================================
 st.subheader("📋 Registered Players")
 
 if not players:
     st.info("No players registered yet.")
 else:
-    for player in players:
-        st.write(
-            f"**{player['name']}** | "
-            f"DUPR: {player.get('dupr', '-') } | "
-            f"Skill: {player.get('skill', '-')}"
-        )
+    import pandas as pd
+
+    df = pd.DataFrame(players)
+
+    # Ensure numeric fields exist
+    df["games"] = df.get("games", 0)
+    df["wins"] = df.get("wins", 0)
+
+    # Calculate win rate safely
+    df["Win %"] = df.apply(
+        lambda row: round((row["wins"] / row["games"]) * 100, 1)
+        if row["games"] > 0 else 0,
+        axis=1
+    )
+
+    # Clean formatting
+    df["skill"] = df["skill"].str.upper()
+
+    # Rename columns for display
+    df_display = df[[
+        "name",
+        "dupr",
+        "skill",
+        "games",
+        "wins",
+        "Win %"
+    ]].rename(columns={
+        "name": "Player",
+        "dupr": "DUPR ID",
+        "skill": "Skill",
+        "games": "Games Played",
+        "wins": "Wins"
+    })
+
+    # Sort by Wins (descending)
+    df_display = df_display.sort_values(by="Wins", ascending=False)
+
+    # Show as HD styled dataframe
+    st.dataframe(
+        df_display,
+        use_container_width=True,
+        hide_index=True
+    )
