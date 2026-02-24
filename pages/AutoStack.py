@@ -145,6 +145,34 @@ def start_match(cid):
     st.session_state.scores[cid] = [0, 0]
     st.session_state.match_start_time[cid] = datetime.now()
 
+def update_player_stats_db(name, games_inc=0, wins_inc=0, losses_inc=0):
+    try:
+        response = supabase.table("players") \
+            .select("games,wins,losses") \
+            .eq("name", name) \
+            .execute()
+
+        if not response.data:
+            return
+
+        player = response.data[0]
+
+        new_games = (player.get("games") or 0) + games_inc
+        new_wins = (player.get("wins") or 0) + wins_inc
+        new_losses = (player.get("losses") or 0) + losses_inc
+
+        supabase.table("players") \
+            .update({
+                "games": new_games,
+                "wins": new_wins,
+                "losses": new_losses
+            }) \
+            .eq("name", name) \
+            .execute()
+
+    except Exception as e:
+        st.error(f"DB update error for {name}: {e}")
+
 def finish_match(cid):
     """Finish a match, update stats, return players to queue in FCFS order."""
     teams = st.session_state.courts.get(cid)
@@ -163,19 +191,29 @@ def finish_match(cid):
         winners, losers = teamB, teamA
     else:
         winner = "DRAW"
-        winners = losers = []
+        winners = []
+        losers = []
 
-    # Update player stats
+    # ================= UPDATE STATS =================
     for p in teamA + teamB:
-        st.session_state.players[p[0]]["games"] += 1
-    for p in winners:
-        st.session_state.players[p[0]]["wins"] += 1
-    for p in losers:
-        st.session_state.players[p[0]]["losses"] += 1
+        name = p[0]
 
-    # Record match history
+        games_inc = 1
+        wins_inc = 1 if p in winners else 0
+        losses_inc = 1 if p in losers else 0
+
+        # Update session state
+        st.session_state.players[name]["games"] += games_inc
+        st.session_state.players[name]["wins"] += wins_inc
+        st.session_state.players[name]["losses"] += losses_inc
+
+        # Update database (single call per player)
+        update_player_stats_db(name, games_inc, wins_inc, losses_inc)
+
+    # ================= RECORD MATCH HISTORY =================
     end_time = datetime.now()
     start_time = st.session_state.match_start_time.get(cid)
+
     if start_time:
         duration = round((end_time - start_time).total_seconds() / 60, 2)
         start_str = start_time.strftime("%H:%M:%S")
@@ -197,15 +235,14 @@ def finish_match(cid):
         "Duration (Minutes)": duration
     })
 
-    # Clear court and start time
+    # ================= RESET COURT =================
     st.session_state.match_start_time.pop(cid, None)
     st.session_state.courts[cid] = None
     st.session_state.locked[cid] = False
     st.session_state.scores[cid] = [0, 0]
 
-    # Return all players to queue in original order (FCFS)
+    # Return players to queue (FCFS)
     st.session_state.queue.extend(teamA + teamB)
-
 def auto_fill():
     """Automatically fill empty courts if the queue has enough players."""
     if not st.session_state.started:
