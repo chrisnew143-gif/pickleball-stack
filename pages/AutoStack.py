@@ -184,37 +184,34 @@ def finish_match(cid):
 
     # Determine winners and losers
     if scoreA > scoreB:
-        winner = "Team A"
         winners, losers = teamA, teamB
     elif scoreB > scoreA:
-        winner = "Team B"
         winners, losers = teamB, teamA
     else:
-        winner = "DRAW"
-        winners = []
-        losers = []
+        winners = losers = []
 
-   # Update session stats (YOUR ORIGINAL LOGIC)
-for p in teamA + teamB:
-    st.session_state.players[p[0]]["games"] += 1
-for p in winners:
-    st.session_state.players[p[0]]["wins"] += 1
-for p in losers:
-    st.session_state.players[p[0]]["losses"] += 1
+    # ================= UPDATE STATS =================
+    for p in teamA + teamB:
+        st.session_state.players[p[0]]["games"] += 1
+    for p in winners:
+        st.session_state.players[p[0]]["wins"] += 1
+    for p in losers:
+        st.session_state.players[p[0]]["losses"] += 1
 
-# Save to Supabase
-for p in teamA + teamB:
-    name = p[0]
-    player_stats = st.session_state.players[name]
+    # ================= SAVE TO SUPABASE =================
+    for p in teamA + teamB:
+        name = p[0]
+        stats = st.session_state.players[name]
+        try:
+            supabase.table("players").update({
+                "games": stats["games"],
+                "wins": stats["wins"],
+                "losses": stats["losses"]
+            }).eq("name", name).execute()
+        except Exception as e:
+            st.error(f"DB update error for {name}: {e}")
 
-    supabase.table("players") \
-        .update({
-            "games": player_stats["games"],
-            "wins": player_stats["wins"],
-            "losses": player_stats["losses"]
-        }) \
-        .eq("name", name) \
-        .execute()
+    # ... rest of finish_match() (history, clear court, return players to queue)
     # ================= RECORD MATCH HISTORY =================
     end_time = datetime.now()
     start_time = st.session_state.match_start_time.get(cid)
