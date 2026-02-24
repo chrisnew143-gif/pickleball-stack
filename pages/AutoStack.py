@@ -145,6 +145,34 @@ st.session_state.locked[cid] = True
 st.session_state.scores[cid] = [0, 0]
 st.session_state.match_start_time[cid] = datetime.now()
 
+def update_player_stats_db(name, games_inc=0, wins_inc=0, losses_inc=0):
+try:
+response = supabase.table("players") \
+.select("games,wins,losses") \
+.eq("name", name) \
+.execute()
+
+if not response.data:
+return
+
+player = response.data[0]
+
+new_games = (player.get("games") or 0) + games_inc
+new_wins = (player.get("wins") or 0) + wins_inc
+new_losses = (player.get("losses") or 0) + losses_inc
+
+supabase.table("players") \
+.update({
+"games": new_games,
+"wins": new_wins,
+"losses": new_losses
+}) \
+.eq("name", name) \
+.execute()
+
+except Exception as e:
+st.error(f"DB update error for {name}: {e}")
+
 def finish_match(cid):
 """Finish a match, update stats, return players to queue in FCFS order."""
 teams = st.session_state.courts.get(cid)
@@ -156,26 +184,65 @@ teamA, teamB = teams
 
 # Determine winners and losers
 if scoreA > scoreB:
-winner = "Team A"
+        winner = "Team A"
 winners, losers = teamA, teamB
 elif scoreB > scoreA:
-winner = "Team B"
+        winner = "Team B"
 winners, losers = teamB, teamA
 else:
-winner = "DRAW"
-winners = losers = []
+        winner = "DRAW"
+        winners = []
+        losers = []
 
-# Update player stats
+   # Update session stats (YOUR ORIGINAL LOGIC)
 for p in teamA + teamB:
-st.session_state.players[p[0]]["games"] += 1
+    st.session_state.players[p[0]]["games"] += 1
 for p in winners:
-st.session_state.players[p[0]]["wins"] += 1
+    st.session_state.players[p[0]]["wins"] += 1
 for p in losers:
-st.session_state.players[p[0]]["losses"] += 1
+    st.session_state.players[p[0]]["losses"] += 1
 
-# Record match history
+# Save to Supabase
+for p in teamA + teamB:
+    name = p[0]
+    player_stats = st.session_state.players[name]
+
+    supabase.table("players") \
+        .update({
+            "games": player_stats["games"],
+            "wins": player_stats["wins"],
+            "losses": player_stats["losses"]
+        }) \
+        .eq("name", name) \
+        .execute()
+        winners = losers = []
+
+    # ================= UPDATE STATS =================
+    for p in teamA + teamB:
+        st.session_state.players[p[0]]["games"] += 1
+    for p in winners:
+        st.session_state.players[p[0]]["wins"] += 1
+    for p in losers:
+        st.session_state.players[p[0]]["losses"] += 1
+
+    # ================= SAVE TO SUPABASE =================
+    for p in teamA + teamB:
+        name = p[0]
+        stats = st.session_state.players[name]
+        try:
+            supabase.table("players").update({
+                "games": stats["games"],
+                "wins": stats["wins"],
+                "losses": stats["losses"]
+            }).eq("name", name).execute()
+        except Exception as e:
+            st.error(f"DB update error for {name}: {e}")
+
+    # ... rest of finish_match() (history, clear court, return players to queue)
+# ================= RECORD MATCH HISTORY =================
 end_time = datetime.now()
 start_time = st.session_state.match_start_time.get(cid)
+
 if start_time:
 duration = round((end_time - start_time).total_seconds() / 60, 2)
 start_str = start_time.strftime("%H:%M:%S")
@@ -197,15 +264,14 @@ st.session_state.history.append({
 "Duration (Minutes)": duration
 })
 
-# Clear court and start time
+# ================= RESET COURT =================
 st.session_state.match_start_time.pop(cid, None)
 st.session_state.courts[cid] = None
 st.session_state.locked[cid] = False
 st.session_state.scores[cid] = [0, 0]
 
-# Return all players to queue in original order (FCFS)
+# Return players to queue (FCFS)
 st.session_state.queue.extend(teamA + teamB)
-
 def auto_fill():
 """Automatically fill empty courts if the queue has enough players."""
 if not st.session_state.started:
@@ -340,9 +406,7 @@ st.session_state.court_count = st.selectbox(
 index=st.session_state.court_count-2
 )
 
-   # ================== ADD PLAYER ==================
-with st.expander("➕ Add Player", expanded=False):
-   # ================== ADD PLAYER (SIDEBAR) ==================
+# ================== ADD PLAYER (SIDEBAR) ==================
 with st.sidebar.expander("➕ Add Player", expanded=False):
 
 # 1️⃣ Fetch all registered players from Supabase
@@ -352,9 +416,8 @@ except Exception as e:
 st.error(f"Error fetching players from database: {e}")
 registered_players = []
 
-    player_names = [p["name"] for p in registered_players]
-    # Build list of player names safely
-    player_names = [p.get("name", "") for p in registered_players if "name" in p]
+# Build list of player names safely
+player_names = [p.get("name", "") for p in registered_players if "name" in p]
 
 # 2️⃣ Add Player Form
 with st.form("add_player_form", clear_on_submit=True):
@@ -363,39 +426,27 @@ selected_name = st.selectbox("Select Registered Player", [""] + player_names)
 submitted = st.form_submit_button("Add Player")
 if submitted and selected_name:
 
-            # Prevent duplicates
+# Prevent duplicates
 if selected_name in st.session_state.players:
 st.warning(f"{selected_name} is already in the queue!")
 else:
-                # Fetch the player's details from Supabase
-                player_data = next((p for p in registered_players if p["name"] == selected_name), None)
-                dupr = player_data["dupr"]
-                skill = player_data["skill"].upper()
+# Find the player data safely
+player_data = next((p for p in registered_players if p.get("name") == selected_name), None)
 
-                # Add to queue and session players
-                st.session_state.queue.append((selected_name, skill, dupr))
-                st.session_state.players.setdefault(
-                    selected_name,
-                    {"dupr": dupr, "games":0, "wins":0, "losses":0}
-                )
-                st.success(f"Added player {selected_name} to queue!")
-                # Find the player data safely
-                player_data = next((p for p in registered_players if p.get("name") == selected_name), None)
-                
-                if not player_data:
-                    st.error("Player data not found in database!")
-                else:
-                    # Get skill and DUPR safely with defaults
-                    dupr = player_data.get("dupr", "N/A")
-                    skill = player_data.get("skill", "BEGINNER").upper()
+if not player_data:
+st.error("Player data not found in database!")
+else:
+# Get skill and DUPR safely with defaults
+dupr = player_data.get("dupr", "N/A")
+skill = player_data.get("skill", "BEGINNER").upper()
 
-                    # Add to queue and session players
-                    st.session_state.queue.append((selected_name, skill, dupr))
-                    st.session_state.players.setdefault(
-                        selected_name,
-                        {"dupr": dupr, "games":0, "wins":0, "losses":0}
-                    )
-                    st.success(f"Added player {selected_name} to queue!")
+# Add to queue and session players
+st.session_state.queue.append((selected_name, skill, dupr))
+st.session_state.players.setdefault(
+selected_name,
+{"dupr": dupr, "games":0, "wins":0, "losses":0}
+)
+st.success(f"Added player {selected_name} to queue!")
 
 # ================== DELETE PLAYER ==================
 if st.session_state.players:
