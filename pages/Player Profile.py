@@ -1,6 +1,7 @@
 # player_profile.py
 import streamlit as st
 from supabase_client import get_supabase
+import pandas as pd
 
 # ==========================
 # INIT
@@ -103,44 +104,22 @@ st.subheader("📋 Registered Players")
 if not players:
     st.info("No players registered yet.")
 else:
-    import pandas as pd
-
     df = pd.DataFrame(players)
 
-    # Ensure numeric fields exist
-    df["games"] = df.get("games", 0)
-    df["wins"] = df.get("wins", 0)
+    # Ensure skill column exists
+    df["skill"] = df.get("skill", "").str.upper()
 
-    # Calculate win rate safely
-    df["Win %"] = df.apply(
-        lambda row: round((row["wins"] / row["games"]) * 100, 1)
-        if row["games"] > 0 else 0,
-        axis=1
-    )
-
-    # Clean formatting
-    df["skill"] = df["skill"].str.upper()
-
-    # Rename columns for display
-    df_display = df[[
-        "name",
-        "dupr",
-        "skill",
-        "games",
-        "wins",
-        "Win %"
-    ]].rename(columns={
+    # Select only the columns we want to show
+    df_display = df[["name", "dupr", "skill"]].rename(columns={
         "name": "Player",
         "dupr": "DUPR ID",
-        "skill": "Skill",
-        "games": "Games Played",
-        "wins": "Wins"
+        "skill": "Category"
     })
 
-    # Sort by Wins (descending)
-    df_display = df_display.sort_values(by="Wins", ascending=False)
+    # Sort alphabetically by Player
+    df_display = df_display.sort_values(by="Player")
 
-    # Show as HD styled dataframe
+    # Display dataframe
     st.dataframe(
         df_display,
         use_container_width=True,
