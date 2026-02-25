@@ -5,8 +5,8 @@ from supabase_client import get_supabase
 supabase = get_supabase()
 
 # ================== PAGE CONFIG ==================
-st.set_page_config(page_title="Pickleball Leaderboard", page_icon="🏆", layout="wide")
-st.title("🏆 Pickleball Leaderboard")
+st.set_page_config(page_title="TiraDinks Leaderboard", page_icon="🏆", layout="wide")
+st.title("🏆 TiraDinks Leaderboard")
 st.caption("Rankings based on total wins and win rate")
 
 # ================== GET PLAYER DATA ==================
